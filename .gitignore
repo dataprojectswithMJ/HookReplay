@@ -22,6 +22,7 @@ creds/
 
 # Local config
 ~/.hookreplay/
+scripts/webhook-receiver.js
 
 # OS / editor
 .DS_Store

@@ -16,10 +16,15 @@ import (
 type APIKey struct {
 	ID         string     `json:"id"`
 	Prefix     string     `json:"prefix"`
+	Name       string     `json:"name,omitempty"`
 	Scopes     []string   `json:"scopes"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 }
+
+// ErrAPIKeyNameExists is returned when a workspace already has a key with the
+// requested name.
+var ErrAPIKeyNameExists = errors.New("an API key with this name already exists")
 
 // User is a user account.
 type User struct {
@@ -38,17 +43,34 @@ type Workspace struct {
 }
 
 // CreateAPIKey generates a key, stores only its hash, and returns the raw key
-// exactly once. The raw key is never persisted or readable again.
-func (s *Store) CreateAPIKey(ctx context.Context, userID, workspaceID string, scopes []string) (string, string, error) {
+// exactly once. The raw key is never persisted or readable again. An optional
+// name can be attached so it can be selected later with `api-keys use <name>`.
+func (s *Store) CreateAPIKey(ctx context.Context, userID, workspaceID, name string, scopes []string) (string, string, error) {
+	if name != "" {
+		var exists bool
+		if err := s.pool.QueryRow(ctx,
+			`SELECT EXISTS (SELECT 1 FROM api_keys WHERE workspace_id = $1 AND name = $2)`,
+			workspaceID, name).Scan(&exists); err != nil {
+			return "", "", fmt.Errorf("store: check api key name: %w", err)
+		}
+		if exists {
+			return "", "", ErrAPIKeyNameExists
+		}
+	}
+
 	raw, hashed, err := auth.NewKey()
 	if err != nil {
 		return "", "", err
 	}
 	keyID := id.New("hrk_")
+	var nameVal any
+	if name != "" {
+		nameVal = name
+	}
 	_, err = s.pool.Exec(ctx, `
-		INSERT INTO api_keys (id, user_id, workspace_id, prefix, hashed_key, scopes)
-		VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
-		keyID, userID, workspaceID, auth.DisplayPrefix(raw), hashed, jsonStr(scopes))
+		INSERT INTO api_keys (id, user_id, workspace_id, prefix, hashed_key, scopes, name)
+		VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)`,
+		keyID, userID, workspaceID, auth.DisplayPrefix(raw), hashed, jsonStr(scopes), nameVal)
 	if err != nil {
 		return "", "", fmt.Errorf("store: create api key: %w", err)
 	}
@@ -58,7 +80,7 @@ func (s *Store) CreateAPIKey(ctx context.Context, userID, workspaceID string, sc
 // ListAPIKeys returns all keys for a workspace (never the raw key/hash).
 func (s *Store) ListAPIKeys(ctx context.Context, workspaceID string) ([]APIKey, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, prefix, scopes, last_used_at, created_at
+		SELECT id, prefix, name, scopes, last_used_at, created_at
 		FROM api_keys WHERE workspace_id = $1 ORDER BY created_at DESC`, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("store: list api keys: %w", err)
@@ -69,8 +91,12 @@ func (s *Store) ListAPIKeys(ctx context.Context, workspaceID string) ([]APIKey, 
 		var k APIKey
 		var scopes []byte
 		var lastUsed *time.Time
-		if err := rows.Scan(&k.ID, &k.Prefix, &scopes, &lastUsed, &k.CreatedAt); err != nil {
+		var name *string
+		if err := rows.Scan(&k.ID, &k.Prefix, &name, &scopes, &lastUsed, &k.CreatedAt); err != nil {
 			return nil, err
+		}
+		if name != nil {
+			k.Name = *name
 		}
 		k.Scopes = scopesFromJSON(scopes)
 		k.LastUsedAt = lastUsed

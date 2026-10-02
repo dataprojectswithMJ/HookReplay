@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/hookreplay/hookreplay/internal/auth"
+	"github.com/hookreplay/hookreplay/internal/store"
 )
 
 func (s *server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
@@ -12,14 +14,19 @@ func (s *server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	pr := principalFrom(r.Context())
 
 	var body struct {
+		Name   string   `json:"name"`
 		Scopes []string `json:"scopes"`
 	}
 	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&body)
 	if len(body.Scopes) == 0 {
 		body.Scopes = auth.AllScopes
 	}
-	raw, keyID, err := s.store.CreateAPIKey(r.Context(), pr.UserID, pr.WorkspaceID, body.Scopes)
+	raw, keyID, err := s.store.CreateAPIKey(r.Context(), pr.UserID, pr.WorkspaceID, body.Name, body.Scopes)
 	if err != nil {
+		if errors.Is(err, store.ErrAPIKeyNameExists) {
+			writeError(w, http.StatusConflict, "api_key_name_exists", err.Error(), reqID)
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", err.Error(), reqID)
 		return
 	}

@@ -78,7 +78,7 @@ To enable `hookreplay login` / the dashboard's GitHub button:
    (the `api` service) or `.env` for local runs.
 4. Reboot: `podman compose up --build -d`.
 
-Skip OAuth entirely with `hookreplay login --key <key>`.
+Skip OAuth entirely with `hookreplay login --name dev`.
 
 ## 2. Boot
 
@@ -151,7 +151,7 @@ Verify: `hookreplay --version`, `hookreplay templates list`.
 ### Authenticate the CLI
 
 ```bash
-hookreplay login --key <your-api-key>   # no browser needed
+hookreplay login --name dev           # local dev key, no browser
 hookreplay login                        # opens the web login page (email/Google/GitHub)
 ```
 
@@ -195,7 +195,7 @@ GitHub OAuth isn't configured. Either set `GITHUB_CLIENT_ID`/`SECRET` and
 reboot, or skip OAuth and store a key directly:
 
 ```bash
-hookreplay login --key hrk_dev_local_dev_only_key
+hookreplay login --name dev
 ```
 
 ### Reset to a clean slate

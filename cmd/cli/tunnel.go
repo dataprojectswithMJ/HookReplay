@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/hookreplay/hookreplay/internal/tunnel"
@@ -31,7 +32,15 @@ var tunnelCmd = &cobra.Command{
 			LocalPort: port,
 			WSBaseURL: wsBaseFrom(resolveAPIBase()),
 		}
-		fmt.Printf("Tunnel ready: %s\n", c.PublicURL())
+		publicURL := c.PublicURL()
+		fmt.Printf("Opening tunnel %s\n", publicURL)
+		c.OnConnected = func() {
+			fmt.Printf("Tunnel ready: %s\n", publicURL)
+		}
+		c.OnConnectError = func(err error) {
+			fmt.Fprintf(os.Stderr, "tunnel: connection failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "tunnel: is the API running and is your key valid? (try: hookreplay login)\n")
+		}
 		return c.Run(cmd.Context())
 	},
 }
