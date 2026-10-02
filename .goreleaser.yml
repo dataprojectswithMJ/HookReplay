@@ -28,7 +28,7 @@ nfpms:
   - id: packages
     package_name: hookreplay
     vendor: HookReplay
-    homepage: https://github.com/hookreplay/hookreplay
+    homepage: https://github.com/dataprojectswithMJ/HookReplay
     maintainer: HookReplay <support@hookreplay.dev>
     description: Fire provider-accurate, correctly-signed webhooks at localhost and staging.
     license: Proprietary
@@ -37,9 +37,9 @@ nfpms:
 brews:
   - name: hookreplay
     repository:
-      owner: hookreplay
+      owner: dataprojectswithMJ
       name: homebrew-tap
-    homepage: https://github.com/hookreplay/hookreplay
+    homepage: https://github.com/dataprojectswithMJ/HookReplay
     description: Fire provider-accurate, correctly-signed webhooks at localhost and staging.
 
 changelog:

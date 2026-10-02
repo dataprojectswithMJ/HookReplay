@@ -8,7 +8,7 @@
 # it to /usr/local/bin (with sudo if needed) or ~/.local/bin otherwise.
 set -e
 
-REPO="hookreplay/hookreplay"
+REPO="dataprojectswithMJ/HookReplay"
 VERSION="${VERSION:-latest}"
 
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"

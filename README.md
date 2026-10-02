@@ -49,7 +49,7 @@ Dashboard (Next.js) ──► /v1/executions (same API, same data)
 **Recommended — one line (any OS with a shell):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hookreplay/hookreplay/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/dataprojectswithMJ/HookReplay/main/install.sh | sh
 ```
 
 This downloads the right binary for your OS/arch from GitHub Releases, verifies
@@ -58,8 +58,8 @@ its checksum, and installs it to `/usr/local/bin` (or `~/.local/bin`).
 Alternatives:
 
 ```bash
-brew install hookreplay                                   # Homebrew tap
-go install github.com/hookreplay/hookreplay/cmd/cli@latest  # Go toolchain
+brew install hookreplay      # Homebrew tap (see .goreleaser.yml)
+go install ./cmd/cli         # from source (dev)
 ```
 
 Verify:
