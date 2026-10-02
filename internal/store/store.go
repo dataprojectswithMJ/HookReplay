@@ -178,11 +178,18 @@ func (s *Store) PrincipalByAPIKeyHash(ctx context.Context, hashedKey string) (*P
 }
 
 // splitStatements splits a SQL script into individual statements on
-// semicolons. It assumes the script contains no semicolons inside string
-// literals (true for the embedded migrations).
+// semicolons. `--` line comments are stripped first so comment text (which may
+// contain semicolons) can't produce a broken statement.
 func splitStatements(script string) []string {
+	var cleaned []string
+	for _, line := range strings.Split(script, "\n") {
+		if idx := strings.Index(line, "--"); idx >= 0 {
+			line = line[:idx]
+		}
+		cleaned = append(cleaned, line)
+	}
 	var out []string
-	for _, part := range strings.Split(script, ";") {
+	for _, part := range strings.Split(strings.Join(cleaned, "\n"), ";") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
