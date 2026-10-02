@@ -2,7 +2,7 @@
 # HookReplay CLI installer.
 #
 # One-liner:
-#   curl -fsSL https://raw.githubusercontent.com/hookreplay/hookreplay/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/dataprojectswithMJ/HookReplay/main/install.sh | sh
 #
 # Downloads the right binary for your OS/arch from GitHub Releases and installs
 # it to /usr/local/bin (with sudo if needed) or ~/.local/bin otherwise.
