@@ -101,13 +101,15 @@ func (c *Client) OAuthConfigured(ctx context.Context) bool {
 	return resp.StatusCode >= 300 && resp.StatusCode < 400
 }
 
-// OAuthResult polls for the key issued by a completed OAuth login.
-func (c *Client) OAuthResult(ctx context.Context, state string) (string, error) {
+// OAuthResult polls for the key issued by a completed OAuth login. alreadyHasKeys
+// is true when the account already has keys and no new key was issued.
+func (c *Client) OAuthResult(ctx context.Context, state string) (apiKey string, alreadyHasKeys bool, err error) {
 	var out struct {
-		APIKey string `json:"api_key"`
+		APIKey         string `json:"api_key"`
+		AlreadyHasKeys bool   `json:"already_has_keys"`
 	}
 	if err := c.do(ctx, http.MethodGet, fmt.Sprintf("/v1/auth/result?state=%s", state), nil, &out); err != nil {
-		return "", err
+		return "", false, err
 	}
-	return out.APIKey, nil
+	return out.APIKey, out.AlreadyHasKeys, nil
 }

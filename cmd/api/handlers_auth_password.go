@@ -3,28 +3,57 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/hookreplay/hookreplay/internal/auth"
+	"github.com/hookreplay/hookreplay/internal/store"
 	"golang.org/x/crypto/bcrypt"
+)
+
+const (
+	defaultKeyName         = "default"
+	alreadyHasKeysSentinel = "__already_has_keys__"
 )
 
 // issueKeyForUser issues a full-scoped API key for a user, creating a workspace
 // if needed. If state != "", the key is also staged for CLI polling.
+//
+// CLI logins reuse an existing key rather than minting a new one on every
+// login: the raw key can't be reissued (only its hash is stored), so the CLI is
+// signalled to use one of its stored keys instead.
 func (s *server) issueKeyForUser(ctx context.Context, userID, workspaceName, state string) (string, error) {
 	wsID, err := s.store.EnsureWorkspace(ctx, userID, workspaceName)
 	if err != nil {
 		return "", err
 	}
-	raw, _, err := s.store.CreateAPIKey(ctx, userID, wsID, "", auth.AllScopes)
-	if err != nil {
-		return "", err
+	if strings.HasPrefix(state, "cli_") {
+		has, err := s.store.WorkspaceHasAPIKey(ctx, wsID)
+		if err != nil {
+			return "", err
+		}
+		if has {
+			s.storePending(state, alreadyHasKeysSentinel)
+			return "", nil
+		}
 	}
-	if state != "" {
-		s.storePending(state, raw)
+
+	name := defaultKeyName
+	for suffix := 2; ; suffix++ {
+		raw, _, err := s.store.CreateAPIKey(ctx, userID, wsID, name, auth.AllScopes)
+		if err == nil {
+			if state != "" {
+				s.storePending(state, raw)
+			}
+			return raw, nil
+		}
+		if !errors.Is(err, store.ErrAPIKeyNameExists) {
+			return "", err
+		}
+		name = fmt.Sprintf("%s-%d", defaultKeyName, suffix)
 	}
-	return raw, nil
 }
 
 func (s *server) handleRegister(w http.ResponseWriter, r *http.Request) {

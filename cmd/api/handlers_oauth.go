@@ -125,6 +125,10 @@ func (s *server) handleOAuthResult(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "oauth_pending", "no login result for this state", requestID(r))
 		return
 	}
+	if key == alreadyHasKeysSentinel {
+		writeJSON(w, http.StatusOK, map[string]any{"api_key": "", "already_has_keys": true})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"api_key": key})
 }
 

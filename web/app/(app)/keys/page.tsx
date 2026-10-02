@@ -7,6 +7,8 @@ import { APIKey, createAPIKey, deleteAPIKey, listAPIKeys } from "@/lib/api";
 export default function KeysPage() {
   const [keys, setKeys] = useState<APIKey[]>([]);
   const [error, setError] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalError, setModalError] = useState("");
   const [newKey, setNewKey] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,17 +23,23 @@ export default function KeysPage() {
 
   useEffect(load, []);
 
+  function openModal() {
+    setName("");
+    setNewKey("");
+    setModalError("");
+    setModalOpen(true);
+  }
+
   async function onCreate() {
     setBusy(true);
-    setError("");
-    setNewKey("");
+    setModalError("");
     try {
-      const res = await createAPIKey(name.trim() || undefined);
+      const res = await createAPIKey(name.trim());
       setName("");
       setNewKey(res.api_key);
       load();
     } catch (e: any) {
-      setError(e.message);
+      setModalError(e.message);
     } finally {
       setBusy(false);
     }
@@ -54,41 +62,18 @@ export default function KeysPage() {
             <p className="font-mono text-sm text-brand">hookreplay / keys</p>
             <h1 className="mt-2 text-3xl font-bold text-white">API keys</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Key name (e.g. staging)"
-              className="rounded-md border border-edge bg-panel px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-brand focus:outline-none"
-            />
-            <button
-              onClick={onCreate}
-              disabled={busy}
-              className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-emerald-300 disabled:opacity-50"
-            >
-              Create key
-            </button>
-          </div>
+          <button
+            onClick={openModal}
+            className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-emerald-300"
+          >
+            Create key
+          </button>
         </div>
 
         {error && (
           <p className="mt-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
             {error}
           </p>
-        )}
-
-        {newKey && (
-          <div className="mt-6 rounded-lg border border-brand/40 bg-brand/5 p-4">
-            <p className="text-sm font-semibold text-brand">
-              Copy your new key now — it won&apos;t be shown again:
-            </p>
-            <div className="mt-2 flex items-start gap-2">
-              <pre className="flex-1 break-all rounded bg-base p-3 font-mono text-sm text-gray-200">
-                {newKey}
-              </pre>
-              <CopyButton text={newKey} />
-            </div>
-          </div>
         )}
 
         {loading ? (
@@ -142,6 +127,76 @@ export default function KeysPage() {
         </div>
         )}
       </main>
+
+      {modalOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+          onClick={() => setModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-edge bg-panel p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {newKey ? (
+              <>
+                <h2 className="text-lg font-semibold text-white">Copy your new key</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  This is the only time it&apos;s shown:
+                </p>
+                <div className="mt-3 flex items-start gap-2">
+                  <pre className="flex-1 break-all rounded bg-base p-3 font-mono text-sm text-gray-200">
+                    {newKey}
+                  </pre>
+                  <CopyButton text={newKey} />
+                </div>
+                <button
+                  onClick={() => setModalOpen(false)}
+                  className="mt-4 w-full rounded-md bg-brand py-2 font-semibold text-black hover:bg-emerald-300"
+                >
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-semibold text-white">Create API key</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  Give it a name so you can switch to it later with{" "}
+                  <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-brand">
+                    hookreplay api-keys use &lt;name&gt;
+                  </code>
+                  .
+                </p>
+                <label className="mt-4 block text-xs text-gray-500">Key name</label>
+                <input
+                  autoFocus
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. staging"
+                  className="mt-1 w-full rounded-md border border-edge bg-base px-3 py-2 text-sm text-gray-200 outline-none focus:border-brand/50"
+                />
+                {modalError && (
+                  <p className="mt-2 text-sm text-red-300">{modalError}</p>
+                )}
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={() => setModalOpen(false)}
+                    className="rounded-md border border-edge px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={onCreate}
+                    disabled={busy || !name.trim()}
+                    className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-300 disabled:opacity-50"
+                  >
+                    {busy ? "Creating…" : "Create key"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

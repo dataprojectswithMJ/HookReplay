@@ -105,6 +105,17 @@ func (s *Store) ListAPIKeys(ctx context.Context, workspaceID string) ([]APIKey, 
 	return out, rows.Err()
 }
 
+// WorkspaceHasAPIKey reports whether a workspace already has at least one key.
+func (s *Store) WorkspaceHasAPIKey(ctx context.Context, workspaceID string) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM api_keys WHERE workspace_id = $1)`, workspaceID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("store: check api keys: %w", err)
+	}
+	return exists, nil
+}
+
 // DeleteAPIKey revokes a key belonging to a workspace.
 func (s *Store) DeleteAPIKey(ctx context.Context, workspaceID, keyID string) error {
 	res, err := s.pool.Exec(ctx, `DELETE FROM api_keys WHERE id = $1 AND workspace_id = $2`, keyID, workspaceID)

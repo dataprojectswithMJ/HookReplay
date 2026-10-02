@@ -18,6 +18,10 @@ func (s *server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		Scopes []string `json:"scopes"`
 	}
 	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&body)
+	if body.Name == "" {
+		writeError(w, http.StatusBadRequest, "invalid_request", "name is required", reqID)
+		return
+	}
 	if len(body.Scopes) == 0 {
 		body.Scopes = auth.AllScopes
 	}

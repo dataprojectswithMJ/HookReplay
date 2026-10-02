@@ -145,7 +145,7 @@ export function listAPIKeys() {
   return apiFetch<APIKey[]>("/v1/api-keys");
 }
 
-export function createAPIKey(name?: string, scopes?: string[]) {
+export function createAPIKey(name: string, scopes?: string[]) {
   return apiFetch<{ id: string; api_key: string }>("/v1/api-keys", {
     method: "POST",
     body: JSON.stringify({ name, scopes }),

@@ -54,16 +54,27 @@ var loginCmd = &cobra.Command{
 				fmt.Println()
 				return fmt.Errorf("login timed out. Make sure the web app is running, or switch to a stored key with 'hookreplay login --name <name>'")
 			case <-time.After(1 * time.Second):
-				k, err := client.OAuthResult(ctx, state)
-				if err == nil && k != "" {
-					c := loadConfig()
-					c.APIKey = k
-					if err := saveConfig(c); err != nil {
-						return err
+				k, already, err := client.OAuthResult(ctx, state)
+				if err == nil {
+					if already {
+						fmt.Println("\n✓ Signed in — you already have API keys.")
+						fmt.Println("List them with `hookreplay api-keys list`; switch with `hookreplay api-keys use <name>`")
+						return nil
 					}
-					fmt.Println("\n✓ Logged in — API key stored.")
-					fmt.Println("Tip: list keys with `hookreplay api-keys list`; switch with `hookreplay api-keys use <name>`")
-					return nil
+					if k != "" {
+						c := loadConfig()
+						c.APIKey = k
+						if c.Keys == nil {
+							c.Keys = map[string]string{}
+						}
+						c.Keys["default"] = k
+						if err := saveConfig(c); err != nil {
+							return err
+						}
+						fmt.Println("\n✓ Logged in — API key stored (name: default).")
+						fmt.Println("Tip: list keys with `hookreplay api-keys list`; switch with `hookreplay api-keys use <name>`")
+						return nil
+					}
 				}
 				fmt.Print(".")
 			}
@@ -79,28 +90,27 @@ var apiKeysCmd = &cobra.Command{
 
 var apiKeysCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create an API key (shown once)",
+	Short: "Create a named API key (shown once)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
+		if name == "" {
+			return fmt.Errorf("--name is required (API keys must have a name)")
+		}
 		client := apiclient.New(resolveAPIBase(), resolveAPIKey())
 		id, raw, err := client.CreateAPIKey(cmd.Context(), name, nil)
 		if err != nil {
 			return err
 		}
-		if name != "" {
-			c := loadConfig()
-			if c.Keys == nil {
-				c.Keys = map[string]string{}
-			}
-			c.Keys[name] = raw
-			if err := saveConfig(c); err != nil {
-				return err
-			}
-			fmt.Printf("Created key %q (copy now — shown only once):\nid:  %s\nkey: %s\n", name, id, raw)
-			fmt.Printf("Remembered it — switch to it any time with: hookreplay api-keys use %s\n", name)
-		} else {
-			fmt.Printf("Created API key (copy now — shown only once):\nid:  %s\nkey: %s\n", id, raw)
+		c := loadConfig()
+		if c.Keys == nil {
+			c.Keys = map[string]string{}
 		}
+		c.Keys[name] = raw
+		if err := saveConfig(c); err != nil {
+			return err
+		}
+		fmt.Printf("Created key %q (copy now — shown only once):\nid:  %s\nkey: %s\n", name, id, raw)
+		fmt.Printf("Remembered it — switch to it any time with: hookreplay api-keys use %s\n", name)
 		return nil
 	},
 }
@@ -231,7 +241,7 @@ func openBrowser(url string) {
 
 func init() {
 	loginCmd.Flags().String("name", "", "switch to a named API key (e.g. dev); omit to open the web login page")
-	apiKeysCreateCmd.Flags().String("name", "", "human-readable name for the key (lets you `hookreplay api-keys use <name>`)")
+	apiKeysCreateCmd.Flags().String("name", "", "name for the key (required; lets you `hookreplay api-keys use <name>`)")
 	apiKeysCmd.AddCommand(apiKeysCreateCmd, apiKeysListCmd, apiKeysUseCmd, apiKeysRevokeCmd)
 	workspacesCmd.AddCommand(workspacesListCmd, workspacesCreateCmd)
 }
