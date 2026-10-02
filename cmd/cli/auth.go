@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -133,7 +134,7 @@ var apiKeysListCmd = &cobra.Command{
 			if k.LastUsedAt != nil {
 				lastUsed = k.LastUsedAt.Format(time.RFC3339)
 			}
-			fmt.Printf("%s%-20s  %s  scopes=%s  last_used=%s\n", mark, name, k.Prefix, strings.Join(k.Scopes, ","), lastUsed)
+			fmt.Printf("%s%-20s  %s  id=%s  scopes=%s  last_used=%s\n", mark, name, k.Prefix, k.ID, strings.Join(k.Scopes, ","), lastUsed)
 		}
 		return nil
 	},
@@ -161,9 +162,46 @@ var apiKeysUseCmd = &cobra.Command{
 		name := args[0]
 		c := loadConfig()
 		raw, ok := c.Keys[name]
-		if !ok {
-			return fmt.Errorf("no local copy of key %q — create it with:\n  hookreplay api-keys create --name %s", name, name)
+		if ok {
+			c.APIKey = raw
+			if err := saveConfig(c); err != nil {
+				return err
+			}
+			fmt.Printf("now using key %q (%s…)\n", name, auth.DisplayPrefix(raw))
+			return nil
 		}
+
+		// The raw key isn't stored locally (only its hash is). If it exists
+		// server-side, offer to import its raw value.
+		client := apiclient.New(resolveAPIBase(), resolveUserToken())
+		keys, err := client.ListAPIKeys(cmd.Context())
+		if err != nil {
+			return err
+		}
+		exists := false
+		var keyID string
+		for _, k := range keys {
+			if k.Name == name {
+				exists = true
+				keyID = k.ID
+				break
+			}
+		}
+		if !exists {
+			return fmt.Errorf("no key named %q — create it with:\n  hookreplay api-keys create --name %s", name, name)
+		}
+
+		fmt.Printf("Key %q exists, but its raw value isn't stored locally (only its hash is).\n", name)
+		fmt.Print("Paste the raw key value (shown once when it was created), or press Enter to cancel:\n> ")
+		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		raw = strings.TrimSpace(line)
+		if raw == "" {
+			return fmt.Errorf("cancelled. To replace %q, revoke it and create a new one:\n  hookreplay api-keys revoke %s\n  hookreplay api-keys create --name %s", name, keyID, name)
+		}
+		if c.Keys == nil {
+			c.Keys = map[string]string{}
+		}
+		c.Keys[name] = raw
 		c.APIKey = raw
 		if err := saveConfig(c); err != nil {
 			return err
