@@ -28,3 +28,4 @@ scripts/webhook-receiver.js
 .DS_Store
 .idea/
 .vscode/
+mockups/
