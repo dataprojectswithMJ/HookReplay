@@ -33,6 +33,19 @@ func NewKey() (string, string, error) {
 	return full, Hash(full), nil
 }
 
+// NewSessionToken generates a user session token, returning (full token,
+// sha256 hex hash). Session tokens carry the `usr_` prefix and are distinct
+// from API keys (`hrk_`): sessions identify a logged-in user, keys authorize
+// operations.
+func NewSessionToken() (string, string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", "", err
+	}
+	full := "usr_" + hex.EncodeToString(raw)
+	return full, Hash(full), nil
+}
+
 // Hash returns the SHA-256 hex digest of a key — the only stored form.
 func Hash(key string) string {
 	sum := sha256.Sum256([]byte(key))

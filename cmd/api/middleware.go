@@ -14,18 +14,27 @@ type ctxKey string
 
 const principalKey ctxKey = "principal"
 
-// auth validates the Bearer API key and injects the principal into context.
+// auth validates the Bearer credential (user session `usr_` or API key `hrk_`)
+// and injects the principal into context.
 func (s *server) auth(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqID := requestID(r)
 		token := bearerToken(r)
 		if token == "" {
-			writeError(w, http.StatusUnauthorized, "unauthorized", "missing API key", reqID)
+			writeError(w, http.StatusUnauthorized, "unauthorized", "missing credential", reqID)
 			return
 		}
-		pr, err := s.store.PrincipalByAPIKeyHash(r.Context(), auth.Hash(token))
-		if err != nil {
-			writeError(w, http.StatusUnauthorized, "unauthorized", "invalid API key", reqID)
+		var (
+			pr  *store.Principal
+			err error
+		)
+		if strings.HasPrefix(token, "usr_") {
+			pr, err = s.store.PrincipalByUserTokenHash(r.Context(), auth.Hash(token))
+		} else {
+			pr, err = s.store.PrincipalByAPIKeyHash(r.Context(), auth.Hash(token))
+		}
+		if err != nil || pr == nil {
+			writeError(w, http.StatusUnauthorized, "unauthorized", "invalid credential", reqID)
 			return
 		}
 		ctx := context.WithValue(r.Context(), principalKey, pr)

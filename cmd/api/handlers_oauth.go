@@ -109,7 +109,7 @@ func (s *server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "oauth_failed", err.Error(), reqID)
 		return
 	}
-	if _, err := s.issueKeyForUser(r.Context(), userID, workspaceName, state); err != nil {
+	if _, err := s.issueUserSession(r.Context(), userID, workspaceName, state); err != nil {
 		writeError(w, http.StatusInternalServerError, "oauth_failed", err.Error(), reqID)
 		return
 	}
@@ -125,10 +125,6 @@ func (s *server) handleOAuthResult(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "oauth_pending", "no login result for this state", requestID(r))
 		return
 	}
-	if key == alreadyHasKeysSentinel {
-		writeJSON(w, http.StatusOK, map[string]any{"api_key": "", "already_has_keys": true})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"api_key": key})
+	writeJSON(w, http.StatusOK, map[string]string{"user_token": key})
 }
 

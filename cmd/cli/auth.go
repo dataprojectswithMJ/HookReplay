@@ -54,27 +54,16 @@ var loginCmd = &cobra.Command{
 				fmt.Println()
 				return fmt.Errorf("login timed out. Make sure the web app is running, or switch to a stored key with 'hookreplay login --name <name>'")
 			case <-time.After(1 * time.Second):
-				k, already, err := client.OAuthResult(ctx, state)
-				if err == nil {
-					if already {
-						fmt.Println("\n✓ Signed in — you already have API keys.")
-						fmt.Println("List them with `hookreplay api-keys list`; switch with `hookreplay api-keys use <name>`")
-						return nil
+				tok, err := client.OAuthResult(ctx, state)
+				if err == nil && tok != "" {
+					c := loadConfig()
+					c.UserToken = tok
+					if err := saveConfig(c); err != nil {
+						return err
 					}
-					if k != "" {
-						c := loadConfig()
-						c.APIKey = k
-						if c.Keys == nil {
-							c.Keys = map[string]string{}
-						}
-						c.Keys["default"] = k
-						if err := saveConfig(c); err != nil {
-							return err
-						}
-						fmt.Println("\n✓ Logged in — API key stored (name: default).")
-						fmt.Println("Tip: list keys with `hookreplay api-keys list`; switch with `hookreplay api-keys use <name>`")
-						return nil
-					}
+					fmt.Println("\n✓ Logged in.")
+					fmt.Println("Tip: create a key with `hookreplay api-keys create --name <name>`; switch with `hookreplay api-keys use <name>`")
+					return nil
 				}
 				fmt.Print(".")
 			}
@@ -96,7 +85,7 @@ var apiKeysCreateCmd = &cobra.Command{
 		if name == "" {
 			return fmt.Errorf("--name is required (API keys must have a name)")
 		}
-		client := apiclient.New(resolveAPIBase(), resolveAPIKey())
+		client := apiclient.New(resolveAPIBase(), resolveUserToken())
 		id, raw, err := client.CreateAPIKey(cmd.Context(), name, nil)
 		if err != nil {
 			return err
@@ -119,7 +108,7 @@ var apiKeysListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List API keys",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := apiclient.New(resolveAPIBase(), resolveAPIKey())
+		client := apiclient.New(resolveAPIBase(), resolveUserToken())
 		keys, err := client.ListAPIKeys(cmd.Context())
 		if err != nil {
 			return err
@@ -155,7 +144,7 @@ var apiKeysRevokeCmd = &cobra.Command{
 	Short: "Revoke an API key",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := apiclient.New(resolveAPIBase(), resolveAPIKey())
+		client := apiclient.New(resolveAPIBase(), resolveUserToken())
 		if err := client.DeleteAPIKey(cmd.Context(), args[0]); err != nil {
 			return err
 		}

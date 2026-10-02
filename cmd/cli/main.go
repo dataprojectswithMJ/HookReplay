@@ -44,9 +44,10 @@ func init() {
 // --- config ---
 
 type config struct {
-	APIKey  string            `json:"api_key"`
-	APIBase string            `json:"api_base"`
-	Keys    map[string]string `json:"keys,omitempty"`
+	UserToken string            `json:"user_token,omitempty"`
+	APIKey    string            `json:"api_key,omitempty"`
+	APIBase   string            `json:"api_base,omitempty"`
+	Keys      map[string]string `json:"keys,omitempty"`
 }
 
 func configPath() string {
@@ -101,6 +102,19 @@ func resolveAPIKey() string {
 }
 
 const devAPIKey = "hrk_dev_local_dev_only_key"
+
+// resolveUserToken returns the logged-in user session token (identity), used to
+// manage keys/workspaces. Falls back to the active API key for local dev so the
+// zero-config flow still works without a login.
+func resolveUserToken() string {
+	if v := os.Getenv("HOOKREPLAY_USER_TOKEN"); v != "" {
+		return v
+	}
+	if c := loadConfig(); c.UserToken != "" {
+		return c.UserToken
+	}
+	return resolveAPIKey()
+}
 
 func resolveAPIBase() string {
 	if apiBase != "" {

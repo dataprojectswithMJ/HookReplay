@@ -47,21 +47,39 @@ export type Me = {
 };
 
 const KEY = "hookreplay_api_key";
+const USER_TOKEN_KEY = "hookreplay_user_token";
 // Dev-only default: the API seeds this key (HOOKREPLAY_DEV_API_KEY) so the
-// slice works out of the box. Real deployments use browser OAuth instead.
+// slice works out of the box. Real deployments use browser login instead.
 const DEV_API_KEY = "hrk_dev_local_dev_only_key";
 
 export function getApiKey(): string {
   if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(KEY) ?? DEV_API_KEY;
+  return window.localStorage.getItem(KEY) ?? "";
 }
 
 export function setApiKey(k: string) {
   window.localStorage.setItem(KEY, k);
 }
 
+export function getUserToken(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(USER_TOKEN_KEY) ?? "";
+}
+
+export function setUserToken(t: string) {
+  window.localStorage.setItem(USER_TOKEN_KEY, t);
+}
+
 export function clearApiKey() {
   window.localStorage.removeItem(KEY);
+  window.localStorage.removeItem(USER_TOKEN_KEY);
+}
+
+// The credential used for API calls: the logged-in user session, or (dev
+// fallback) the seeded API key. Sessions are identity; API keys are for
+// operations.
+function authToken(): string {
+  return getUserToken() || getApiKey() || DEV_API_KEY;
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -69,7 +87,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     "Content-Type": "application/json",
     ...((init?.headers as Record<string, string>) ?? {}),
   };
-  const key = getApiKey();
+  const key = authToken();
   if (key) headers["Authorization"] = `Bearer ${key}`;
 
   const res = await fetch(path, { ...init, headers });
@@ -173,21 +191,21 @@ export function oauthStartURL(state: string) {
 }
 
 export function register(email: string, password: string, state?: string) {
-  return apiFetch<{ api_key?: string; status?: string }>("/v1/auth/register", {
+  return apiFetch<{ user_token?: string; status?: string }>("/v1/auth/register", {
     method: "POST",
     body: JSON.stringify({ email, password, state }),
   });
 }
 
 export function login(email: string, password: string, state?: string) {
-  return apiFetch<{ api_key?: string; status?: string }>("/v1/auth/login", {
+  return apiFetch<{ user_token?: string; status?: string }>("/v1/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password, state }),
   });
 }
 
 export function getAuthResult(state: string) {
-  return apiFetch<{ api_key: string }>(`/v1/auth/result?state=${state}`);
+  return apiFetch<{ user_token: string }>(`/v1/auth/result?state=${state}`);
 }
 
 export type ChainStepResult = {

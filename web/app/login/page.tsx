@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuthResult, login, register, setApiKey } from "@/lib/api";
+import { getAuthResult, login, register, setUserToken } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,8 +27,8 @@ export default function LoginPage() {
     const timer = setInterval(async () => {
       try {
         const res = await getAuthResult(cliState);
-        if (res.api_key) {
-          setApiKey(res.api_key);
+        if (res.user_token) {
+          setUserToken(res.user_token);
           router.push("/");
         }
       } catch {
@@ -48,8 +48,8 @@ export default function LoginPage() {
         mode === "register"
           ? await register(email.trim(), password, state)
           : await login(email.trim(), password, state);
-      if (res.api_key) {
-        setApiKey(res.api_key);
+      if (res.user_token) {
+        setUserToken(res.user_token);
         router.push("/");
       } else {
         setShowDone(true);

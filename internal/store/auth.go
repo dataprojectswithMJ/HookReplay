@@ -105,6 +105,45 @@ func (s *Store) ListAPIKeys(ctx context.Context, workspaceID string) ([]APIKey, 
 	return out, rows.Err()
 }
 
+// CreateSession creates a user session and returns its raw token once. The raw
+// token is never persisted or readable again (only its hash).
+func (s *Store) CreateSession(ctx context.Context, userID string) (string, error) {
+	raw, hashed, err := auth.NewSessionToken()
+	if err != nil {
+		return "", err
+	}
+	sessionID := id.New("ses_")
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO sessions (id, user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3, now() + interval '30 days')`,
+		sessionID, userID, hashed)
+	if err != nil {
+		return "", fmt.Errorf("store: create session: %w", err)
+	}
+	return raw, nil
+}
+
+// PrincipalByUserTokenHash resolves a logged-in user from a hashed session
+// token. Sessions grant the user's full scopes within their first workspace.
+func (s *Store) PrincipalByUserTokenHash(ctx context.Context, hashedToken string) (*Principal, error) {
+	var p Principal
+	err := s.pool.QueryRow(ctx, `
+		SELECT u.id, w.id, w.tier, u.email
+		FROM sessions s
+		JOIN users u ON u.id = s.user_id
+		JOIN workspace_members m ON m.user_id = u.id
+		JOIN workspaces w ON w.id = m.workspace_id
+		WHERE s.token_hash = $1 AND s.expires_at > now()
+		ORDER BY w.created_at ASC
+		LIMIT 1`, hashedToken).
+		Scan(&p.UserID, &p.WorkspaceID, &p.Tier, &p.Email)
+	if err != nil {
+		return nil, fmt.Errorf("store: lookup session principal: %w", err)
+	}
+	p.Scopes = auth.AllScopes
+	return &p, nil
+}
+
 // WorkspaceHasAPIKey reports whether a workspace already has at least one key.
 func (s *Store) WorkspaceHasAPIKey(ctx context.Context, workspaceID string) (bool, error) {
 	var exists bool
