@@ -17,7 +17,7 @@ func (s *server) issueKeyForUser(ctx context.Context, userID, workspaceName, sta
 	if err != nil {
 		return "", err
 	}
-	raw, _, err := s.store.CreateAPIKey(ctx, userID, wsID, auth.AllScopes)
+	raw, _, err := s.store.CreateAPIKey(ctx, userID, wsID, "", auth.AllScopes)
 	if err != nil {
 		return "", err
 	}

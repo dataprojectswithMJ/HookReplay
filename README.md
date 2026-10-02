@@ -166,10 +166,10 @@ execution shows the raw body, signature header, **SHA-256**, and **byte length**
 The CLI needs an API key. Two ways:
 
 ```bash
-# 1. Direct key — no GitHub needed
-hookreplay login --key hrk_dev_local_dev_only_key
+# 1. Local dev key (named "dev") — no GitHub needed
+hookreplay login --name dev
 
-# 2. GitHub OAuth — needs GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET on the server
+# 2. Web login — email/Google/GitHub (OAuth needs client IDs/secrets on the server)
 hookreplay login
 ```
 

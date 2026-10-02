@@ -8,6 +8,7 @@ export default function KeysPage() {
   const [keys, setKeys] = useState<APIKey[]>([]);
   const [error, setError] = useState("");
   const [newKey, setNewKey] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +26,8 @@ export default function KeysPage() {
     setError("");
     setNewKey("");
     try {
-      const res = await createAPIKey();
+      const res = await createAPIKey(name.trim() || undefined);
+      setName("");
       setNewKey(res.api_key);
       load();
     } catch (e: any) {
@@ -52,13 +54,21 @@ export default function KeysPage() {
             <p className="font-mono text-sm text-brand">hookreplay / keys</p>
             <h1 className="mt-2 text-3xl font-bold text-white">API keys</h1>
           </div>
-          <button
-            onClick={onCreate}
-            disabled={busy}
-            className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-emerald-300 disabled:opacity-50"
-          >
-            Create key
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Key name (e.g. staging)"
+              className="rounded-md border border-edge bg-panel px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-brand focus:outline-none"
+            />
+            <button
+              onClick={onCreate}
+              disabled={busy}
+              className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-emerald-300 disabled:opacity-50"
+            >
+              Create key
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -90,6 +100,7 @@ export default function KeysPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-panel text-xs uppercase tracking-wide text-gray-500">
               <tr>
+                <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Prefix</th>
                 <th className="px-4 py-3">Scopes</th>
                 <th className="px-4 py-3">Last used</th>
@@ -99,6 +110,7 @@ export default function KeysPage() {
             <tbody className="divide-y divide-edge bg-base">
               {keys.map((k) => (
                 <tr key={k.id}>
+                  <td className="px-4 py-3 text-gray-200">{k.name || "—"}</td>
                   <td className="px-4 py-3 font-mono text-gray-200">{k.prefix}…</td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-400">
                     {k.scopes.join(", ")}
@@ -120,7 +132,7 @@ export default function KeysPage() {
               ))}
               {keys.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-600">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-600">
                     No keys yet.
                   </td>
                 </tr>

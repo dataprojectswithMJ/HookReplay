@@ -11,6 +11,7 @@ import (
 type APIKey struct {
 	ID         string     `json:"id"`
 	Prefix     string     `json:"prefix"`
+	Name       string     `json:"name,omitempty"`
 	Scopes     []string   `json:"scopes"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
@@ -25,12 +26,12 @@ type Workspace struct {
 }
 
 // CreateAPIKey issues a key and returns its id and raw key (raw shown once).
-func (c *Client) CreateAPIKey(ctx context.Context, scopes []string) (id, raw string, err error) {
+func (c *Client) CreateAPIKey(ctx context.Context, name string, scopes []string) (id, raw string, err error) {
 	var out struct {
 		ID     string `json:"id"`
 		APIKey string `json:"api_key"`
 	}
-	if err := c.do(ctx, http.MethodPost, "/v1/api-keys", map[string]any{"scopes": scopes}, &out); err != nil {
+	if err := c.do(ctx, http.MethodPost, "/v1/api-keys", map[string]any{"name": name, "scopes": scopes}, &out); err != nil {
 		return "", "", err
 	}
 	return out.ID, out.APIKey, nil

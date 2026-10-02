@@ -128,6 +128,7 @@ export function decodeBase64(b64: string): string {
 export type APIKey = {
   id: string;
   prefix: string;
+  name?: string;
   scopes: string[];
   last_used_at?: string;
   created_at: string;
@@ -144,10 +145,10 @@ export function listAPIKeys() {
   return apiFetch<APIKey[]>("/v1/api-keys");
 }
 
-export function createAPIKey(scopes?: string[]) {
+export function createAPIKey(name?: string, scopes?: string[]) {
   return apiFetch<{ id: string; api_key: string }>("/v1/api-keys", {
     method: "POST",
-    body: JSON.stringify({ scopes }),
+    body: JSON.stringify({ name, scopes }),
   });
 }
 

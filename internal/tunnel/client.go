@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -23,6 +24,11 @@ type Client struct {
 	LocalPort int
 	WSBaseURL string // ws://host (derived from API base)
 	Dialer    *websocket.Dialer
+
+	// OnConnected is called after the tunnel establishes a connection.
+	OnConnected func()
+	// OnConnectError is called when a connection attempt fails.
+	OnConnectError func(err error)
 
 	writeMu sync.Mutex // gorilla allows only one concurrent writer
 }
@@ -46,8 +52,11 @@ func (c *Client) Run(ctx context.Context) error {
 		if c.APIToken != "" {
 			header.Set("Authorization", "Bearer "+c.APIToken)
 		}
-		conn, _, err := dialer.DialContext(ctx, u, header)
+		conn, resp, err := dialer.DialContext(ctx, u, header)
 		if err != nil {
+			if c.OnConnectError != nil {
+				c.OnConnectError(connectError(err, resp))
+			}
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -60,6 +69,9 @@ func (c *Client) Run(ctx context.Context) error {
 			continue
 		}
 		backoff = time.Second
+		if c.OnConnected != nil {
+			c.OnConnected()
+		}
 
 		err = c.serve(ctx, conn)
 		_ = conn.Close()
@@ -135,4 +147,11 @@ func (c *Client) forward(m message) message {
 		Headers: headers,
 		Body:    base64.StdEncoding.EncodeToString(respBody),
 	}
+}
+
+func connectError(err error, resp *http.Response) error {
+	if resp != nil {
+		return fmt.Errorf("server rejected tunnel connection (HTTP %d)", resp.StatusCode)
+	}
+	return err
 }

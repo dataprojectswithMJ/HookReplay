@@ -145,14 +145,14 @@ export default function DocsPage() {
             <P>
               Install with <Mono>go install ./cmd/cli</Mono> (binary:{" "}
               <Mono>hookreplay</Mono>) — requires Go 1.25+. Sign in with{" "}
-              <Mono>hookreplay login --key &lt;your-api-key&gt;</Mono> (no GitHub
-              needed) or <Mono>hookreplay login</Mono> (GitHub OAuth). Every
+              <Mono>hookreplay login --name &lt;name&gt;</Mono> (switch to a
+              named key) or <Mono>hookreplay login</Mono> (web login). Every
               command accepts <Mono>--api-key</Mono>, <Mono>--api-base</Mono>,
               and <Mono>--json</Mono>.
             </P>
             <Table
               rows={[
-                ["login", "Sign in via GitHub OAuth (or --key to store a key)"],
+                ["login", "Web login (email/Google/GitHub), or --name to switch keys"],
                 ["init", "Scaffold a hookreplay.yml"],
                 ["fmt [file]", "Normalize a chain to block-style YAML (--check)"],
                 ["validate [file]", "Lint a chain against the schema"],

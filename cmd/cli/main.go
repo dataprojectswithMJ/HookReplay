@@ -17,6 +17,7 @@ var (
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
@@ -43,8 +44,9 @@ func init() {
 // --- config ---
 
 type config struct {
-	APIKey  string `json:"api_key"`
-	APIBase string `json:"api_base"`
+	APIKey  string            `json:"api_key"`
+	APIBase string            `json:"api_base"`
+	Keys    map[string]string `json:"keys,omitempty"`
 }
 
 func configPath() string {
@@ -56,12 +58,18 @@ func configPath() string {
 }
 
 func loadConfig() config {
-	var c config
+	c := config{Keys: map[string]string{"dev": devAPIKey}}
 	data, err := os.ReadFile(configPath())
 	if err != nil {
 		return c
 	}
 	_ = json.Unmarshal(data, &c)
+	if c.Keys == nil {
+		c.Keys = map[string]string{}
+	}
+	if _, ok := c.Keys["dev"]; !ok {
+		c.Keys["dev"] = devAPIKey
+	}
 	return c
 }
 
