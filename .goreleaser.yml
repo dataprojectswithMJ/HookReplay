@@ -34,14 +34,6 @@ nfpms:
     license: Proprietary
     formats: [deb, rpm]
 
-brews:
-  - name: hookreplay
-    repository:
-      owner: dataprojectswithMJ
-      name: homebrew-tap
-    homepage: https://github.com/dataprojectswithMJ/HookReplay
-    description: Fire provider-accurate, correctly-signed webhooks at localhost and staging.
-
 changelog:
   sort: asc
   filters:
