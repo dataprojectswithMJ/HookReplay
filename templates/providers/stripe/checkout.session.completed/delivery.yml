@@ -1,0 +1,5 @@
+provider: stripe
+event: checkout.session.completed
+attempt_intervals: ["0s", "5m", "1h", "6h"]
+max_attempts: 4
+timeout_s: 30

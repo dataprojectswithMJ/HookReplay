@@ -1,0 +1,22 @@
+{
+  "entity": "event",
+  "account_id": "acc_ABC",
+  "event": "payment.captured",
+  "contains": ["payment"],
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_NjKbWQ0W2JbG8R",
+        "entity": "payment",
+        "amount": 20000,
+        "currency": "INR",
+        "status": "captured",
+        "method": "card",
+        "email": "gaurav.kumar@example.com",
+        "contact": "9876543210",
+        "created_at": 1690000000
+      }
+    }
+  },
+  "created_at": 1690000000
+}

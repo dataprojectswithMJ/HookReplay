@@ -1,0 +1,5 @@
+provider: paystack
+event: charge.success
+scheme: paystack
+signature_header: x-paystack-signature
+note: hex(HMAC-SHA512(body, secret)) — hex, NOT base64 (CI-mandated encoding vector).

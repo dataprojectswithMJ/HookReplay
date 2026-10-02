@@ -1,0 +1,5 @@
+provider: slack
+event: event_callback
+scheme: slack
+signature_header: X-Slack-Signature
+note: v0={hex(HMAC-SHA256("v0:{ts}:{body}", signing_secret))}; fresh X-Slack-Request-Timestamp.

@@ -1,0 +1,26 @@
+{
+  "ref": "refs/heads/main",
+  "before": "0000000000000000000000000000000000000000",
+  "after": "6113728f27ae82c7b1a177c8d03f9e96e0adf246",
+  "repository": {
+    "id": 135493233,
+    "name": "Hello-World",
+    "full_name": "octocat/Hello-World",
+    "private": false,
+    "default_branch": "main"
+  },
+  "pusher": {
+    "name": "octocat",
+    "email": "octocat@github.com"
+  },
+  "sender": {
+    "login": "octocat",
+    "id": 1
+  },
+  "head_commit": {
+    "id": "6113728f27ae82c7b1a177c8d03f9e96e0adf246",
+    "message": "Fix the bug",
+    "timestamp": "2024-01-01T00:00:00Z",
+    "author": { "name": "Mona Octocat", "email": "octocat@github.com" }
+  }
+}

@@ -1,0 +1,5 @@
+provider: meta
+event: leadgen
+scheme: meta
+signature_header: X-Hub-Signature-256
+note: sha256=hex(HMAC-SHA256(body, app_secret)). Requires hub.challenge handshake on subscribe (documented).

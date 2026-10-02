@@ -1,0 +1,5 @@
+provider: razorpay
+event: payment.captured
+attempt_intervals: ["0s", "5m", "30m", "2h"]
+max_attempts: 4
+timeout_s: 30

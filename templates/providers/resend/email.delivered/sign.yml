@@ -1,0 +1,5 @@
+provider: resend
+event: email.delivered
+scheme: resend
+signature_header: Resend-Signature
+note: Ed25519 over the raw body; key material is the Ed25519 private key; Resend-Signature-Timestamp included.

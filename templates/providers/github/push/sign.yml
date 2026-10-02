@@ -1,0 +1,5 @@
+provider: github
+event: push
+scheme: github
+signature_header: X-Hub-Signature-256
+note: sha256=hex(HMAC-SHA256(body, secret)).

@@ -1,0 +1,5 @@
+provider: razorpay
+event: payment.captured
+scheme: razorpay
+signature_header: x-razorpay-signature
+note: hex(HMAC-SHA256(body, webhook_secret)).

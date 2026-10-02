@@ -1,0 +1,12 @@
+{
+  "type": "email.delivered",
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "data": {
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "email_id": "71cdfe68-7c4e-4f5e-9f4f-3c9a3f3a3a3a",
+    "from": "onboarding@resend.dev",
+    "to": ["user@example.com"],
+    "subject": "Welcome!",
+    "last_event": "delivered"
+  }
+}

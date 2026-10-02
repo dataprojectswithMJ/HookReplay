@@ -1,0 +1,26 @@
+{
+  "id": "evt_1Nc8x2Example",
+  "object": "event",
+  "api_version": "2022-11-15",
+  "created": 1690000000,
+  "data": {
+    "object": {
+      "id": "cs_test_a1B2c3D4e5F6",
+      "object": "checkout.session",
+      "amount_total": 20000,
+      "amount_subtotal": 20000,
+      "currency": "usd",
+      "customer": "cus_NffrFeUfNV2Hib",
+      "customer_email": "jenny@example.com",
+      "payment_intent": "pi_3Nc8x2Example",
+      "payment_status": "paid",
+      "status": "complete",
+      "mode": "payment",
+      "livemode": false
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": { "id": null, "idempotency_key": null },
+  "type": "checkout.session.completed"
+}

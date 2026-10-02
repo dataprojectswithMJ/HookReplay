@@ -1,0 +1,24 @@
+{
+  "event": "charge.success",
+  "data": {
+    "id": 302961,
+    "domain": "test",
+    "status": "success",
+    "reference": "7PVGX8MEk85tgepVD14D",
+    "amount": 20000,
+    "message": null,
+    "gateway_response": "Successful",
+    "paid_at": "2024-01-01T00:00:00.000Z",
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "channel": "card",
+    "currency": "NGN",
+    "ip_address": "10.10.10.10",
+    "customer": {
+      "id": 68324,
+      "first_name": "BoJack",
+      "last_name": "Horseman",
+      "email": "bojack@example.com",
+      "customer_code": "CUS_xnxdt6s1zg1f4nx"
+    }
+  }
+}

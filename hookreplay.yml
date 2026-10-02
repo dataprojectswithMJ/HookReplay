@@ -1,0 +1,7 @@
+name: my-first-webhook
+target: ${TUNNEL_URL}
+environment: local
+steps:
+  - name: checkout-completed
+    webhook: stripe/checkout.session.completed
+    secret: env:STRIPE_WEBHOOK_SECRET

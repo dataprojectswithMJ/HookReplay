@@ -1,0 +1,5 @@
+provider: github
+event: push
+attempt_intervals: ["0s"]
+max_attempts: 1
+timeout_s: 30

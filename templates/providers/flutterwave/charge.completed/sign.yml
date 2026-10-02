@@ -1,0 +1,5 @@
+provider: flutterwave
+event: charge.completed
+scheme: flutterwave
+signature_header: verif-hash
+note: verif-hash = hex(SHA256(secret)) — static, does NOT bind the payload. Use IP allowlisting as the real control.

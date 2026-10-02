@@ -1,0 +1,15 @@
+# Go
+.git/
+go.work
+# Node
+web/node_modules/
+web/.next/
+# Env/secrets
+.env
+*.pem
+.dev-api-key
+# Binaries
+/bin/
+*.exe
+# Docs/specs (not needed in image)
+HookReplay_*.md

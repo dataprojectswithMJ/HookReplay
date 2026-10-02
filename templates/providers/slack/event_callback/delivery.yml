@@ -1,0 +1,5 @@
+provider: slack
+event: event_callback
+attempt_intervals: ["0s", "5s", "1m"]
+max_attempts: 3
+timeout_s: 30

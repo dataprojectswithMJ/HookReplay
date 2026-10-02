@@ -1,0 +1,5 @@
+provider: stripe
+event: checkout.session.completed
+scheme: stripe
+signature_header: Stripe-Signature
+note: HMAC-SHA256 over "{t}.{body}" with the webhook signing secret (whsec_...). Fresh timestamp at dispatch; tolerance 180s.

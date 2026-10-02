@@ -1,0 +1,21 @@
+{
+  "event": "charge.completed",
+  "data": {
+    "id": 285959875,
+    "tx_ref": "hooli-tx-1920bbtytty",
+    "flw_ref": "FLW-MOCK-9d6d4f1a",
+    "amount": 20000,
+    "currency": "NGN",
+    "charged_amount": 20000,
+    "status": "successful",
+    "payment_type": "card",
+    "customer": {
+      "id": 12345,
+      "name": "Yemi Desola",
+      "phone_number": null,
+      "email": "user@example.com",
+      "created_at": "2024-01-01T00:00:00.000Z"
+    },
+    "created_at": "2024-01-01T00:00:00.000Z"
+  }
+}
