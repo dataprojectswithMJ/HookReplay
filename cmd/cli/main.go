@@ -38,7 +38,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&apiBase, "api-base", "", "API base URL (default: $HOOKREPLAY_API_BASE or http://localhost:8080)")
 	rootCmd.PersistentFlags().BoolVar(&jsonOut, "json", false, "machine-readable output")
 
-	rootCmd.AddCommand(loginCmd, initCmd, fmtCmd, validateCmd, tunnelCmd, runCmd, templatesCmd, secretsCmd, apiKeysCmd, workspacesCmd, keysCmd, chainsCmd)
+	rootCmd.AddCommand(loginCmd, initCmd, fmtCmd, validateCmd, tunnelCmd, runCmd, templatesCmd, secretsCmd, apiKeysCmd, workspacesCmd, keysCmd, chainsCmd, versionCmd, updateCmd)
 }
 
 // --- config ---

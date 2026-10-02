@@ -53,17 +53,16 @@ fi
 
 tar -xzf "$TMPDIR/$TARBALL" -C "$TMPDIR"
 
-DEST="/usr/local/bin"
+# Prefer a user-local dir (no sudo); fall back to /usr/local/bin if needed.
+DEST="$HOME/.local/bin"
+mkdir -p "$DEST" 2>/dev/null
 if [ ! -w "$DEST" ]; then
-  if command -v sudo >/dev/null 2>&1; then
-    sudo install -m 755 "$TMPDIR/hookreplay" "$DEST/hookreplay"
-  else
-    DEST="$HOME/.local/bin"
-    mkdir -p "$DEST"
-    install -m 755 "$TMPDIR/hookreplay" "$DEST/hookreplay"
-  fi
-else
+  DEST="/usr/local/bin"
+fi
+if [ -w "$DEST" ]; then
   install -m 755 "$TMPDIR/hookreplay" "$DEST/hookreplay"
+else
+  sudo install -m 755 "$TMPDIR/hookreplay" "$DEST/hookreplay"
 fi
 
 echo "hookreplay: installed to $DEST/hookreplay"

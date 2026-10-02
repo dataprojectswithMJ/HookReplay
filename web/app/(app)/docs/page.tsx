@@ -10,14 +10,10 @@ const SECTIONS = [
   { id: "troubleshooting", label: "Troubleshooting" },
 ];
 
-const TUNNEL_CMD = `hookreplay tunnel --port 3000
+const TUNNEL_CMD = `hookreplay tunnel --port 4000
 # → Tunnel ready: http://localhost:8080/t/hrk-xxxxxxxx/`;
 
 const INSTALL_CMD = `curl -fsSL https://raw.githubusercontent.com/dataprojectswithMJ/HookReplay/main/install.sh | sh`;
-
-const FIRE_CMD = `export HOOKREPLAY_API_KEY=hrk_dev_local_dev_only_key
-hookreplay init          # scaffold hookreplay.yml
-hookreplay run           # dispatch through the API`;
 
 const CHAIN_YAML = `name: payment-onboarding-flow
 target: \${TUNNEL_URL}
@@ -77,94 +73,76 @@ export default function DocsPage() {
             <Code>{INSTALL_CMD}</Code>
             <P>
               It downloads the right binary for your OS/arch, verifies its
-              checksum, and installs it to <Mono>/usr/local/bin</Mono> (or{" "}
-              <Mono>~/.local/bin</Mono>). Alternatives: <Mono>brew install hookreplay</Mono>{" "}
-              or <Mono>go install ./cmd/cli</Mono>. Verify with{" "}
-              <Mono>hookreplay --version</Mono>.
+              checksum, and installs it to <Mono>~/.local/bin</Mono> (falling
+              back to <Mono>/usr/local/bin</Mono>). Verify with{" "}
+              <Mono>hookreplay version</Mono>, and update anytime with{" "}
+              <Mono>hookreplay update</Mono>.
             </P>
           </Section>
 
           <Section id="quickstart" title="Quickstart">
             <P>
-              The shortest path is five steps: get a key, open a tunnel, fire a
-              webhook, verify the signature, and watch it land in the log.
+              Four steps: log in, pick a key, start a local handler, and open
+              the tunnel. Then point your webhook at the tunnel URL.
             </P>
 
-            <H3>1. Get an API key</H3>
+            <H3>1. Log in</H3>
             <P>
-              The local dev build seeds a workspace with the key{" "}
-              <Mono>hrk_dev_local_dev_only_key</Mono>. For your own key, use the{" "}
-              <Link href="/keys" className="text-brand hover:underline">
-                Keys
-              </Link>{" "}
-              page, or sign in (email, Google, or GitHub):
+              Sign in with email, Google, or GitHub — or use the local dev key:
             </P>
-            <Code>hookreplay login</Code>
+            <Code>{`hookreplay login             # web login (email/Google/GitHub)
+hookreplay login --name dev  # local dev key (seeded as "dev")`}</Code>
 
-            <H3>2. Open a tunnel to localhost</H3>
+            <H3>2. Pick a key</H3>
             <P>
-              The tunnel relays inbound webhooks to your local handler (here on
-              port 3000):
+              List your keys and switch to the one you want (the active key is
+              marked <Mono>*</Mono>):
+            </P>
+            <Code>{`hookreplay api-keys list                    # view keys (* = active)
+hookreplay api-keys use <name>              # switch to a key
+hookreplay api-keys create --name staging   # create a new named key`}</Code>
+
+            <H3>3. Start a local webhook handler</H3>
+            <P>
+              Run whatever receives the webhook on a local port — your own app,
+              or the dev receiver for a quick test:
+            </P>
+            <Code>{`node scripts/webhook-receiver.js   # dev receiver (default port 4000)
+# …or your own server on any port`}</Code>
+
+            <H3>4. Open the tunnel</H3>
+            <P>
+              Point the tunnel at that port and copy the printed URL — it&apos;s
+              your webhook <Mono>target</Mono>:
             </P>
             <Code>{TUNNEL_CMD}</Code>
-            <P>
-              Copy the printed URL — it&apos;s your <Mono>target</Mono>.
-            </P>
-
-            <H3>3. Fire a webhook</H3>
-            <P>
-              From the dashboard{" "}
-              <Link href="/fire" className="text-brand hover:underline">
-                Fire
-              </Link>{" "}
-              page, pick a template, paste the tunnel URL as the target, set a
-              secret, and hit <strong className="text-white">Fire</strong>. Or
-              from the CLI:
-            </P>
-            <Code>{FIRE_CMD}</Code>
-
-            <H3>4. Verify the signature in your handler</H3>
-            <P>
-              Payloads are signed at dispatch time over the raw bytes — so your
-              handler&apos;s Stripe, GitHub, Paystack, or Slack signature check
-              passes without a real provider account.
-            </P>
-
-            <H3>5. Watch it in the log</H3>
-            <P>
-              The{" "}
-              <Link href="/log" className="text-brand hover:underline">
-                Log
-              </Link>{" "}
-              page lists every execution with the raw body, signature header,
-              SHA-256, and byte length (the trust signals).
-            </P>
           </Section>
 
           <Section id="cli" title="CLI reference">
             <P>
-              Install with <Mono>go install ./cmd/cli</Mono> (binary:{" "}
-              <Mono>hookreplay</Mono>) — requires Go 1.25+. Sign in with{" "}
+              Sign in with <Mono>hookreplay login</Mono> (web login) or{" "}
               <Mono>hookreplay login --name &lt;name&gt;</Mono> (switch to a
-              named key) or <Mono>hookreplay login</Mono> (web login). Every
+              named key). Update anytime with <Mono>hookreplay update</Mono>;
+              check the version with <Mono>hookreplay version</Mono>. Every
               command accepts <Mono>--api-key</Mono>, <Mono>--api-base</Mono>,
               and <Mono>--json</Mono>.
             </P>
             <Table
               rows={[
                 ["login", "Web login (email/Google/GitHub), or --name to switch keys"],
+                ["api-keys list/use/create/revoke", "Manage named API keys and switch the active one"],
+                ["tunnel", "Open a WebSocket tunnel to localhost (--port)"],
                 ["init", "Scaffold a hookreplay.yml"],
+                ["run", "Run a hookreplay.yml chain through the API"],
                 ["fmt [file]", "Normalize a chain to block-style YAML (--check)"],
                 ["validate [file]", "Lint a chain against the schema"],
-                ["tunnel", "Open a WebSocket tunnel to localhost (--port)"],
-                ["run", "Run a hookreplay.yml chain through the API"],
-                ["templates list", "List every template"],
-                ["templates show <p/e>", "Show one template (provider/event)"],
+                ["templates list/show", "Browse templates"],
                 ["secrets set/list/delete", "Manage write-only secrets (--env)"],
-                ["api-keys create/list/revoke", "Manage API keys"],
-                ["workspaces list", "List workspaces"],
+                ["workspaces list/create", "Manage workspaces"],
                 ["keys generate", "Generate an Ed25519 keypair (custom sign)"],
                 ["chains push/list/pull", "Sync chains with the workspace"],
+                ["version", "Print the CLI version"],
+                ["update", "Self-update to the latest release"],
               ]}
             />
           </Section>
