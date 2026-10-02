@@ -5,6 +5,7 @@ const SECTIONS = [
   { id: "quickstart", label: "Quickstart" },
   { id: "cli", label: "CLI reference" },
   { id: "chains", label: "Chain YAML" },
+  { id: "variables", label: "Variables & secrets" },
   { id: "providers", label: "Providers & signing" },
   { id: "concepts", label: "Concepts" },
   { id: "troubleshooting", label: "Troubleshooting" },
@@ -178,6 +179,44 @@ hookreplay api-keys create --name staging   # create a new named key`}</Code>
               <Mono>{"{{steps.payment-received.body.data.object.id}}"}</Mono> and{" "}
               <Mono>{"{{target}}"}</Mono>.
             </P>
+          </Section>
+
+          <Section id="variables" title="Variables & secrets">
+            <P>
+              A chain uses two placeholder syntaxes, kept separate on purpose:
+            </P>
+            <Table
+              rows={[
+                ["${VAR}", "Shell/CI environment, resolved once before the run. Unknown variable → hard error naming it."],
+                ["{{target}}", "The target URL the chain fires at (your tunnel URL)."],
+                ["{{steps.<name>.status}}", "The HTTP status of an earlier step."],
+                ["{{steps.<name>.body}}", "The full JSON body of an earlier step's response."],
+                ["{{steps.<name>.body.a.b}}", "A JSON path into an earlier step's response body."],
+                ["secret: env:NAME", "Signing secret referenced by name only — never a literal value."],
+              ]}
+            />
+            <P>
+              <Mono>env:NAME</Mono> resolves from the shell environment first,
+              then the workspace secret store (set with{" "}
+              <Mono>hookreplay secrets set NAME</Mono>). Secrets are write-only
+              and never printed. A step can gate on an earlier step with{" "}
+              <Mono>when</Mono>: <Mono>==</Mono>, <Mono>!=</Mono>,{" "}
+              <Mono>contains</Mono>, <Mono>exists</Mono>.
+            </P>
+            <Code>{`steps:
+  - name: checkout
+    webhook: stripe/checkout.session.completed
+    secret: env:STRIPE_WEBHOOK_SECRET           # name only, never the value
+  - name: order-must-exist
+    api:
+      method: GET
+      url: "{{target}}/orders/{{steps.checkout.body.data.object.id}}"
+    when: "{{steps.checkout.status}} == 200"     # only if the step above succeeded
+    expect:
+      status: 200
+      body:
+        json_path: status
+        equals: paid`}</Code>
           </Section>
 
           <Section id="providers" title="Providers & signing">

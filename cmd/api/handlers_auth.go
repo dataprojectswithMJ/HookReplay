@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/hookreplay/hookreplay/internal/auth"
+	"github.com/hookreplay/hookreplay/internal/crypt"
 	"github.com/hookreplay/hookreplay/internal/store"
 )
 
@@ -34,6 +35,15 @@ func (s *server) handleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal_error", err.Error(), reqID)
 		return
 	}
+	ct, err := crypt.Encrypt([]byte(raw), s.masterKey)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error(), reqID)
+		return
+	}
+	if err := s.store.SetAPIKeyCiphertext(r.Context(), keyID, ct); err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error(), reqID)
+		return
+	}
 	writeJSON(w, http.StatusCreated, map[string]string{"id": keyID, "api_key": raw})
 }
 
@@ -54,6 +64,25 @@ func (s *server) handleDeleteAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
+}
+
+func (s *server) handleRevealAPIKey(w http.ResponseWriter, r *http.Request) {
+	pr := principalFrom(r.Context())
+	ct, err := s.store.APIKeyCiphertext(r.Context(), pr.WorkspaceID, r.PathValue("id"))
+	if err != nil {
+		if errors.Is(err, store.ErrAPIKeyNotRevealable) {
+			writeError(w, http.StatusGone, "api_key_not_revealable", err.Error(), requestID(r))
+			return
+		}
+		writeError(w, http.StatusNotFound, "api_key_not_found", err.Error(), requestID(r))
+		return
+	}
+	raw, err := crypt.Decrypt(ct, s.masterKey)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", err.Error(), requestID(r))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"api_key": string(raw)})
 }
 
 func (s *server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {

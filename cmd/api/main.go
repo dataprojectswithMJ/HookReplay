@@ -151,6 +151,7 @@ func main() {
 	mux.Handle("POST /v1/api-keys", srv.requireScope(auth.ScopeAdmin, srv.handleCreateAPIKey))
 	mux.Handle("GET /v1/api-keys", srv.requireScope(auth.ScopeAdmin, srv.handleListAPIKeys))
 	mux.Handle("DELETE /v1/api-keys/{id}", srv.requireScope(auth.ScopeAdmin, srv.handleDeleteAPIKey))
+	mux.Handle("GET /v1/api-keys/{id}/reveal", srv.requireScope(auth.ScopeAdmin, srv.handleRevealAPIKey))
 	mux.Handle("POST /v1/workspaces", srv.requireScope(auth.ScopeAdmin, srv.handleCreateWorkspace))
 
 	// Tunnel.

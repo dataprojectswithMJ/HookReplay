@@ -51,6 +51,17 @@ func (c *Client) DeleteAPIKey(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodDelete, "/v1/api-keys/"+id, nil, nil)
 }
 
+// RevealAPIKey returns the raw key for a key id (the server stores it encrypted).
+func (c *Client) RevealAPIKey(ctx context.Context, id string) (string, error) {
+	var out struct {
+		APIKey string `json:"api_key"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/v1/api-keys/"+id+"/reveal", nil, &out); err != nil {
+		return "", err
+	}
+	return out.APIKey, nil
+}
+
 // ListWorkspaces lists the authenticated user's memberships.
 func (c *Client) ListWorkspaces(ctx context.Context) ([]Workspace, error) {
 	var out []Workspace

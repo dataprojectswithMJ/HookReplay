@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -161,8 +160,7 @@ var apiKeysUseCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		c := loadConfig()
-		raw, ok := c.Keys[name]
-		if ok {
+		if raw, ok := c.Keys[name]; ok {
 			c.APIKey = raw
 			if err := saveConfig(c); err != nil {
 				return err
@@ -171,32 +169,25 @@ var apiKeysUseCmd = &cobra.Command{
 			return nil
 		}
 
-		// The raw key isn't stored locally (only its hash is). If it exists
-		// server-side, offer to import its raw value.
+		// Resolve by name from the server (the raw key is stored encrypted).
 		client := apiclient.New(resolveAPIBase(), resolveUserToken())
 		keys, err := client.ListAPIKeys(cmd.Context())
 		if err != nil {
 			return err
 		}
-		exists := false
 		var keyID string
 		for _, k := range keys {
 			if k.Name == name {
-				exists = true
 				keyID = k.ID
 				break
 			}
 		}
-		if !exists {
+		if keyID == "" {
 			return fmt.Errorf("no key named %q — create it with:\n  hookreplay api-keys create --name %s", name, name)
 		}
-
-		fmt.Printf("Key %q exists, but its raw value isn't stored locally (only its hash is).\n", name)
-		fmt.Print("Paste the raw key value (shown once when it was created), or press Enter to cancel:\n> ")
-		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		raw = strings.TrimSpace(line)
-		if raw == "" {
-			return fmt.Errorf("cancelled. To replace %q, revoke it and create a new one:\n  hookreplay api-keys revoke %s\n  hookreplay api-keys create --name %s", name, keyID, name)
+		raw, err := client.RevealAPIKey(cmd.Context(), keyID)
+		if err != nil {
+			return err
 		}
 		if c.Keys == nil {
 			c.Keys = map[string]string{}

@@ -26,6 +26,10 @@ type APIKey struct {
 // requested name.
 var ErrAPIKeyNameExists = errors.New("an API key with this name already exists")
 
+// ErrAPIKeyNotRevealable is returned when a key's raw value can't be recovered
+// (it was created before encrypted-at-rest reveal support).
+var ErrAPIKeyNotRevealable = errors.New("this key's raw value is not recoverable — revoke it and create a new one")
+
 // User is a user account.
 type User struct {
 	ID              string `json:"id"`
@@ -153,6 +157,30 @@ func (s *Store) WorkspaceHasAPIKey(ctx context.Context, workspaceID string) (boo
 		return false, fmt.Errorf("store: check api keys: %w", err)
 	}
 	return exists, nil
+}
+
+// SetAPIKeyCiphertext stores the encrypted raw key so it can be revealed later.
+func (s *Store) SetAPIKeyCiphertext(ctx context.Context, keyID string, ciphertext []byte) error {
+	_, err := s.pool.Exec(ctx, `UPDATE api_keys SET ciphertext = $1 WHERE id = $2`, ciphertext, keyID)
+	if err != nil {
+		return fmt.Errorf("store: set api key ciphertext: %w", err)
+	}
+	return nil
+}
+
+// APIKeyCiphertext returns the encrypted raw key for a workspace key.
+func (s *Store) APIKeyCiphertext(ctx context.Context, workspaceID, keyID string) ([]byte, error) {
+	var ct []byte
+	err := s.pool.QueryRow(ctx,
+		`SELECT ciphertext FROM api_keys WHERE id = $1 AND workspace_id = $2 AND ciphertext IS NOT NULL`,
+		keyID, workspaceID).Scan(&ct)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAPIKeyNotRevealable
+		}
+		return nil, fmt.Errorf("store: get api key ciphertext: %w", err)
+	}
+	return ct, nil
 }
 
 // DeleteAPIKey revokes a key belonging to a workspace.
