@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: hookreplay
       POSTGRES_PASSWORD: hookreplay
@@ -17,6 +18,7 @@ services:
 
   redis:
     image: redis:7
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -27,6 +29,7 @@ services:
 
   api:
     build: .
+    restart: unless-stopped
     environment:
       HOOKREPLAY_HTTP_ADDR: ":8080"
       HOOKREPLAY_DATABASE_URL: "postgres://hookreplay:hookreplay@postgres:5432/hookreplay?sslmode=disable"
@@ -51,6 +54,7 @@ services:
       context: ./web
       args:
         HOOKREPLAY_API_PROXY: "http://api:8080"
+    restart: unless-stopped
     ports:
       - "3000:3000"
     depends_on:
