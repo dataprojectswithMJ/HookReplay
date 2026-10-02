@@ -18,6 +18,7 @@ web/*.tsbuildinfo
 .env.local
 *.pem
 .dev-api-key
+creds/
 
 # Local config
 ~/.hookreplay/

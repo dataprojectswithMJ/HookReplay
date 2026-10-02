@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const SECTIONS = [
+  { id: "install", label: "Install" },
   { id: "quickstart", label: "Quickstart" },
   { id: "cli", label: "CLI reference" },
   { id: "chains", label: "Chain YAML" },
@@ -11,6 +12,8 @@ const SECTIONS = [
 
 const TUNNEL_CMD = `hookreplay tunnel --port 3000
 # → Tunnel ready: http://localhost:8080/t/hrk-xxxxxxxx/`;
+
+const INSTALL_CMD = `curl -fsSL https://raw.githubusercontent.com/dataprojectswithMJ/HookReplay/main/install.sh | sh`;
 
 const FIRE_CMD = `export HOOKREPLAY_API_KEY=hrk_dev_local_dev_only_key
 hookreplay init          # scaffold hookreplay.yml
@@ -66,6 +69,21 @@ export default function DocsPage() {
             </p>
           </header>
 
+          <Section id="install" title="Install the CLI">
+            <P>
+              The CLI is a single static binary — install it in one line (no Go
+              toolchain needed):
+            </P>
+            <Code>{INSTALL_CMD}</Code>
+            <P>
+              It downloads the right binary for your OS/arch, verifies its
+              checksum, and installs it to <Mono>/usr/local/bin</Mono> (or{" "}
+              <Mono>~/.local/bin</Mono>). Alternatives: <Mono>brew install hookreplay</Mono>{" "}
+              or <Mono>go install ./cmd/cli</Mono>. Verify with{" "}
+              <Mono>hookreplay --version</Mono>.
+            </P>
+          </Section>
+
           <Section id="quickstart" title="Quickstart">
             <P>
               The shortest path is five steps: get a key, open a tunnel, fire a
@@ -79,7 +97,7 @@ export default function DocsPage() {
               <Link href="/keys" className="text-brand hover:underline">
                 Keys
               </Link>{" "}
-              page, or sign in with GitHub:
+              page, or sign in (email, Google, or GitHub):
             </P>
             <Code>hookreplay login</Code>
 

@@ -42,11 +42,19 @@ The API seeds a dev workspace + user + API key from `HOOKREPLAY_DEV_API_KEY`
 
 ## 1. Configure the environment
 
-The Compose file bakes sensible defaults. For **local** runs (not compose),
-copy and adjust:
+Put your config in a single file at the **repo root**:
 
 ```bash
-cp .env.example .env
+cp .env.example .env    # ← the .env lives at the repo root
+```
+
+- **Compose runs** read `.env` automatically — `docker-compose.yml` uses
+  `${VAR:-default}` substitution for the user-configurable values.
+- **Local runs** load it into the shell first:
+
+```bash
+set -a; source .env; set +a
+go run ./cmd/api
 ```
 
 Key variables (full reference below):
@@ -126,7 +134,7 @@ cd web && npm install && npm run dev # dashboard → :3000
 **Recommended — one line:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hookreplay/hookreplay/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/dataprojectswithMJ/HookReplay/main/install.sh | sh
 ```
 
 Downloads the right binary for your OS/arch from GitHub Releases, verifies the
