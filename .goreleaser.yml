@@ -1,5 +1,5 @@
-# GoReleaser — builds + publishes the CLI to GitHub Releases, with a Homebrew
-# formula and deb/rpm packages. Run via the release workflow (on tag push).
+# GoReleaser — builds cross-compiled CLI binaries and publishes them to
+# GitHub Releases on every tag push (see .github/workflows/release.yml).
 version: 2
 
 builds:
@@ -23,16 +23,6 @@ archives:
 
 checksum:
   name_template: "checksums.txt"
-
-nfpms:
-  - id: packages
-    package_name: hookreplay
-    vendor: HookReplay
-    homepage: https://github.com/dataprojectswithMJ/HookReplay
-    maintainer: HookReplay <support@hookreplay.dev>
-    description: Fire provider-accurate, correctly-signed webhooks at localhost and staging.
-    license: Proprietary
-    formats: [deb, rpm]
 
 changelog:
   sort: asc
