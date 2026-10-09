@@ -117,10 +117,11 @@ func (s *Store) CreateSession(ctx context.Context, userID string) (string, error
 		return "", err
 	}
 	sessionID := id.New("ses_")
+	expiresAt := time.Now().Add(s.sessionTTL)
 	_, err = s.pool.Exec(ctx, `
 		INSERT INTO sessions (id, user_id, token_hash, expires_at)
-		VALUES ($1, $2, $3, now() + interval '30 days')`,
-		sessionID, userID, hashed)
+		VALUES ($1, $2, $3, $4)`,
+		sessionID, userID, hashed, expiresAt)
 	if err != nil {
 		return "", fmt.Errorf("store: create session: %w", err)
 	}

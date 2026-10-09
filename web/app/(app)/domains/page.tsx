@@ -48,8 +48,8 @@ export default function DomainsPage() {
       <main className="mx-auto max-w-5xl px-6 py-12">
         <p className="font-mono text-sm text-brand">hookreplay / domains</p>
         <h1 className="mt-2 text-3xl font-bold text-white">Domains</h1>
-        <p className="mt-2 text-sm text-gray-400">
-          Verify a domain to fire webhooks at public URLs (Pro feature).
+        <p className="mt-2 text-sm text-textMuted">
+          Verify a domain to fire webhooks at public URLs. Available on all tiers.
         </p>
 
         {error && (
@@ -60,17 +60,17 @@ export default function DomainsPage() {
 
         <div className="mt-6 flex items-end gap-3 rounded-xl border border-edge bg-panel p-5">
           <div className="flex-1">
-            <label className="block text-xs text-gray-500">Domain</label>
+            <label className="block text-xs text-textFaint">Domain</label>
             <input
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               placeholder="staging.example.com"
-              className="mt-1 w-full rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-gray-200 outline-none focus:border-brand/50"
+              className="mt-1 w-full rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-textMuted outline-none focus:border-brand/50"
             />
           </div>
           <button
             onClick={onAdd}
-            className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-emerald-300"
+            className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-brandBright"
           >
             Add domain
           </button>
@@ -83,7 +83,7 @@ export default function DomainsPage() {
         ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-edge">
           <table className="w-full text-left text-sm">
-            <thead className="bg-panel text-xs uppercase tracking-wide text-gray-500">
+            <thead className="bg-panel text-xs uppercase tracking-wide text-textFaint">
               <tr>
                 <th className="px-4 py-3">Domain</th>
                 <th className="px-4 py-3">Status</th>
@@ -94,19 +94,19 @@ export default function DomainsPage() {
             <tbody className="divide-y divide-edge bg-base">
               {domains.map((d) => (
                 <tr key={d.id}>
-                  <td className="px-4 py-3 font-mono text-gray-200">{d.domain}</td>
+                  <td className="px-4 py-3 font-mono text-textMuted">{d.domain}</td>
                   <td className="px-4 py-3">
                     {d.verified_at ? (
                       <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-xs text-brand">
                         verified
                       </span>
                     ) : (
-                      <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs text-amber-300">
+                      <span className="rounded-full bg-warn/15 px-2.5 py-0.5 text-xs text-warn">
                         pending
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                  <td className="px-4 py-3 font-mono text-xs text-textFaint">
                     {d.verification_token}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -123,7 +123,7 @@ export default function DomainsPage() {
               ))}
               {domains.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-600">
+                  <td colSpan={4} className="px-4 py-8 text-center text-textFaint">
                     No domains yet.
                   </td>
                 </tr>

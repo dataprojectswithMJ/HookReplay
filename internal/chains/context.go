@@ -11,16 +11,21 @@ import (
 
 // StepResult is the outcome of one step.
 type StepResult struct {
-	Name         string   `json:"name"`
-	Status       int      `json:"status"`
-	Body         []byte   `json:"body,omitempty"` // base64 in JSON
-	LatencyMS    int64    `json:"latency_ms"`
-	Retries      int      `json:"retries,omitempty"`
-	Delays       []string `json:"delays,omitempty"`
-	Error        string   `json:"error,omitempty"`
-	Skipped      bool     `json:"skipped"`
-	Failed       bool     `json:"failed"`
-	ExpectErrors []string `json:"expect_errors,omitempty"`
+	Name           string            `json:"name"`
+	Type           string            `json:"type,omitempty"`            // webhook | api | custom
+	RequestSummary string            `json:"request_summary,omitempty"` // method+URL for api, event for webhook
+	Status         int               `json:"status"`
+	Body           []byte            `json:"body,omitempty"` // base64 in JSON
+	LatencyMS      int64             `json:"latency_ms"`
+	Retries        int               `json:"retries,omitempty"`
+	Delays         []string          `json:"delays,omitempty"`
+	Error          string            `json:"error,omitempty"`
+	Deliver        map[string]string `json:"deliver,omitempty"`
+	Skipped        bool              `json:"skipped"`
+	Failed         bool              `json:"failed"`
+	Passed         bool              `json:"passed"`
+	ExpectErrors   []string          `json:"expect_errors,omitempty"`
+	ExpectError    string            `json:"expect_error,omitempty"` // joined ExpectErrors
 }
 
 // runCtx carries the runtime context shared across steps.
@@ -42,19 +47,6 @@ func (rc *runCtx) resolve(s string) string {
 		}
 		return stringify(v)
 	})
-}
-
-// resolveScalar resolves a single {{...}} token or returns a literal.
-func (rc *runCtx) resolveScalar(s string) string {
-	s = strings.TrimSpace(s)
-	if strings.HasPrefix(s, "{{") && strings.HasSuffix(s, "}}") {
-		v, ok := rc.lookup(strings.TrimSpace(s[2 : len(s)-2]))
-		if !ok {
-			return ""
-		}
-		return stringify(v)
-	}
-	return strings.Trim(s, "\"'")
 }
 
 func (rc *runCtx) lookup(inner string) (any, bool) {
@@ -86,31 +78,6 @@ func (rc *runCtx) lookup(inner string) (any, bool) {
 	}
 }
 
-// evalWhen returns whether the step should run (true) or be skipped (false).
-// An empty expression means "always run".
-func (rc *runCtx) evalWhen(expr string) (bool, error) {
-	expr = strings.TrimSpace(expr)
-	if expr == "" {
-		return true, nil
-	}
-	for _, op := range []string{"==", "!=", "contains"} {
-		if strings.Contains(expr, op) {
-			parts := strings.SplitN(expr, op, 2)
-			left := rc.resolveScalar(parts[0])
-			right := rc.resolveScalar(parts[1])
-			switch op {
-			case "==":
-				return left == right, nil
-			case "!=":
-				return left != right, nil
-			case "contains":
-				return strings.Contains(left, right), nil
-			}
-		}
-	}
-	return false, fmt.Errorf("unsupported when expression %q", expr)
-}
-
 // evalExpect returns a list of unmet expectations.
 func evalExpect(e *Expect, sr StepResult) []string {
 	var errs []string
@@ -135,24 +102,26 @@ func evalExpect(e *Expect, sr StepResult) []string {
 		}
 	}
 	if len(e.Delays) > 0 {
-		if !delaysEqual(e.Delays, sr.Delays) {
-			errs = append(errs, fmt.Sprintf("delays: expected %v, got %v", e.Delays, sr.Delays))
-		}
+		errs = append(errs, delaysMatch(e.Delays, sr.Delays)...)
 	}
 
 	if e.Body != nil {
 		v, err := extractJSON(sr.Body, e.Body.JSONPath)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("body.json_path: %v", err))
+			if e.Body.Exists != nil && !*e.Body.Exists {
+				// path absent, as required
+			} else {
+				errs = append(errs, fmt.Sprintf("body.%s: %v (body: %s)", e.Body.JSONPath, err, bodySnippet(sr.Body)))
+			}
 		} else {
-			if e.Body.Exists != nil && *e.Body.Exists {
-				// existence already implied by successful extraction
+			if e.Body.Exists != nil && !*e.Body.Exists {
+				errs = append(errs, fmt.Sprintf("body.%s: expected path to not exist, got %v", e.Body.JSONPath, v))
 			}
 			if e.Body.Equals != nil && stringify(v) != stringify(e.Body.Equals) {
-				errs = append(errs, fmt.Sprintf("body.%s: expected %v, got %v", e.Body.JSONPath, e.Body.Equals, v))
+				errs = append(errs, fmt.Sprintf("body.%s: expected %v, got %v (body: %s)", e.Body.JSONPath, e.Body.Equals, v, bodySnippet(sr.Body)))
 			}
 			if e.Body.Contains != nil && !strings.Contains(stringify(v), stringify(e.Body.Contains)) {
-				errs = append(errs, fmt.Sprintf("body.%s: %q does not contain %q", e.Body.JSONPath, stringify(v), stringify(e.Body.Contains)))
+				errs = append(errs, fmt.Sprintf("body.%s: %q does not contain %q (body: %s)", e.Body.JSONPath, stringify(v), stringify(e.Body.Contains), bodySnippet(sr.Body)))
 			}
 		}
 	}
@@ -160,26 +129,47 @@ func evalExpect(e *Expect, sr StepResult) []string {
 	return errs
 }
 
-// delaysEqual compares two backoff sequences by duration, so "5m" matches
-// "300s". Falls back to string equality when either side is not a duration.
-func delaysEqual(want, got []string) bool {
-	if len(want) != len(got) {
-		return false
+// bodySnippet returns a trimmed (≤300 char) snippet of the body for error messages.
+func bodySnippet(b []byte) string {
+	s := strings.TrimSpace(string(b))
+	if len(s) > 300 {
+		s = s[:300] + "…"
 	}
-	for i := range want {
+	return s
+}
+
+// delayTolerance is the ±20% window around a configured delay within which
+// an observed delay still counts as a match, so scheduler slop or a loaded
+// test machine doesn't flake an otherwise-correct schedule.
+const delayTolerance = 0.2
+
+// delaysMatch compares two backoff sequences by duration, so "30s" matches
+// "30000ms", allowing ±20% tolerance per entry. Non-duration entries fall
+// back to string equality. It returns one error per mismatching delay plus a
+// length mismatch error, each naming the expected range and observed value.
+func delaysMatch(want, got []string) []string {
+	var errs []string
+	n := min(len(want), len(got))
+	for i := 0; i < n; i++ {
 		w, err1 := time.ParseDuration(want[i])
 		g, err2 := time.ParseDuration(got[i])
 		if err1 != nil || err2 != nil {
 			if want[i] != got[i] {
-				return false
+				errs = append(errs, fmt.Sprintf("delay %d of %d: expected %q, observed %q", i+1, len(want), want[i], got[i]))
 			}
 			continue
 		}
-		if w != g {
-			return false
+		lo := time.Duration(float64(w) * (1 - delayTolerance))
+		hi := time.Duration(float64(w) * (1 + delayTolerance))
+		if g < lo || g > hi {
+			errs = append(errs, fmt.Sprintf("delay %d of %d: expected %s–%s, observed %s", i+1, len(want), lo, hi, g))
 		}
 	}
-	return true
+	if len(want) != len(got) {
+		errs = append(errs, fmt.Sprintf("delays: expected %d delay(s) [%s], observed %d [%s]",
+			len(want), strings.Join(want, ", "), len(got), strings.Join(got, ", ")))
+	}
+	return errs
 }
 
 func matchStatus(want any, got int) bool {

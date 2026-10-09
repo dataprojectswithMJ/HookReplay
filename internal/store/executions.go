@@ -20,6 +20,7 @@ type Execution struct {
 	ID                string
 	WorkspaceID       string
 	ChainID           string
+	ChainRunID        string
 	StepName          string
 	TargetKind        string
 	Target            string
@@ -69,17 +70,17 @@ func (s *Store) CreateExecution(ctx context.Context, e *Execution) error {
 	}
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO executions (
-			id, workspace_id, chain_id, step_name, target_kind, target,
+			id, workspace_id, chain_id, chain_run_id, step_name, target_kind, target,
 			provider, template_id, request_body, request_headers,
 			signature_header, deliver, error_code, response_status, response_body,
 			latency_ms, attempt, parent_execution_id, idempotency_key
 		) VALUES (
-			$1,$2,NULLIF($3,''),NULLIF($4,''),$5,$6,
-			NULLIF($7,''),NULLIF($8,''),$9,$10::jsonb,
-			$11::jsonb,$12::jsonb,NULLIF($13,''),$14,$15,
-			NULLIF($16,0),$17,NULLIF($18,''),NULLIF($19,'')
+			$1,$2,NULLIF($3,''),NULLIF($4,''),NULLIF($5,''),$6,$7,
+			NULLIF($8,''),NULLIF($9,''),$10,$11::jsonb,
+			$12::jsonb,$13::jsonb,NULLIF($14,''),$15,$16,
+			NULLIF($17,0),$18,NULLIF($19,''),NULLIF($20,'')
 		)`,
-		e.ID, e.WorkspaceID, e.ChainID, e.StepName, e.TargetKind, e.Target,
+		e.ID, e.WorkspaceID, e.ChainID, e.ChainRunID, e.StepName, e.TargetKind, e.Target,
 		e.Provider, e.TemplateID, e.RequestBody, jsonStr(e.RequestHeaders),
 		jsonStr(e.SignatureHeader), jsonStr(e.Deliver), e.ErrorCode, e.ResponseStatus, e.ResponseBody,
 		e.LatencyMS, e.Attempt, e.ParentExecutionID, e.IdempotencyKey,
@@ -94,20 +95,20 @@ func (s *Store) CreateExecution(ctx context.Context, e *Execution) error {
 	return nil
 }
 
-const executionColumns = `id, workspace_id, chain_id, step_name, target_kind, target,
+const executionColumns = `id, workspace_id, chain_id, chain_run_id, step_name, target_kind, target,
 	provider, template_id, request_body, request_headers, signature_header,
 	deliver, error_code, response_status, response_body, latency_ms, attempt,
 	parent_execution_id, idempotency_key, created_at`
 
 func scanExecution(row pgx.Row) (*Execution, error) {
 	var e Execution
-	var chainID, stepName, provider, templateID, parentID, idemKey *string
+	var chainID, chainRunID, stepName, provider, templateID, parentID, idemKey *string
 	var errCode *string
 	var latency *int64
 	var respBody []byte
 	var reqHdr, sigHdr, deliver []byte
 	err := row.Scan(
-		&e.ID, &e.WorkspaceID, &chainID, &stepName, &e.TargetKind, &e.Target,
+		&e.ID, &e.WorkspaceID, &chainID, &chainRunID, &stepName, &e.TargetKind, &e.Target,
 		&provider, &templateID, &e.RequestBody, &reqHdr, &sigHdr,
 		&deliver, &errCode, &e.ResponseStatus, &respBody, &latency, &e.Attempt,
 		&parentID, &idemKey, &e.CreatedAt,
@@ -117,6 +118,9 @@ func scanExecution(row pgx.Row) (*Execution, error) {
 	}
 	if chainID != nil {
 		e.ChainID = *chainID
+	}
+	if chainRunID != nil {
+		e.ChainRunID = *chainRunID
 	}
 	if stepName != nil {
 		e.StepName = *stepName
@@ -169,6 +173,31 @@ func (s *Store) GetExecutionByIdempotency(ctx context.Context, workspaceID, key 
 		return nil, fmt.Errorf("store: get execution by idempotency: %w", err)
 	}
 	return e, nil
+}
+
+// ListExecutionsByChainRun returns the executions of one chain run in attempt
+// order (oldest first), for step → webhook lineage.
+func (s *Store) ListExecutionsByChainRun(ctx context.Context, workspaceID, runID string, limit int) ([]*Execution, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := s.pool.Query(ctx,
+		`SELECT `+executionColumns+` FROM executions
+			WHERE workspace_id = $1 AND chain_run_id = $2
+			ORDER BY created_at ASC LIMIT $3`, workspaceID, runID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("store: list executions by chain run: %w", err)
+	}
+	defer rows.Close()
+	var out []*Execution = []*Execution{}
+	for rows.Next() {
+		e, err := scanExecution(rows)
+		if err != nil {
+			return nil, fmt.Errorf("store: scan execution: %w", err)
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
 }
 
 // ListExecutions returns recent executions for a workspace, newest first.

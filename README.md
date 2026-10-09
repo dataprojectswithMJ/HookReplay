@@ -210,7 +210,7 @@ go test ./...
 byte-exact storage + breaker + rate limiter + idempotency + `deliver` failure
 simulation + async retry scheduling, WebSocket tunnel, API
 (auth/secrets/templates/dispatch/executions/chains/usage/domains), the chain
-engine (`webhook`/`api`/`custom` steps, `when`, `{{steps.*}}` extraction,
+engine (`webhook`/`api`/`custom` steps, fail-fast `expect`, `{{steps.*}}` extraction,
 `expect` incl. `status`/`latency_under`/`retries`/`delays`/`body`), the CLI
 (`run`/`tunnel`/`validate`/`fmt`/`templates`/`secrets`/`api-keys`/`workspaces`/
 `keys`/`chains`), and the dashboard (fire → log → detail → chains → keys →

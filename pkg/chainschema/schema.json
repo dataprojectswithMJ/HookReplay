@@ -68,11 +68,7 @@
           "description": "Delay before this step."
         },
         "deliver": { "$ref": "#/$defs/deliver" },
-        "expect": { "$ref": "#/$defs/expect" },
-        "when": {
-          "type": "string",
-          "description": "Conditional skip expression; references earlier steps only."
-        }
+        "expect": { "$ref": "#/$defs/expect" }
       },
       "oneOf": [
         { "required": ["webhook"] },
@@ -85,6 +81,7 @@
       "additionalProperties": false,
       "properties": {
         "payload": { "type": ["string", "object"] },
+        "url": { "type": "string" },
         "headers": { "type": "object" },
         "sign": { "$ref": "#/$defs/sign" }
       }
@@ -97,7 +94,8 @@
         "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
         "url": { "type": "string" },
         "headers": { "type": "object" },
-        "timeout": { "type": "string", "pattern": "^[0-9]+(ms|s|m)$" }
+        "timeout": { "type": "string", "pattern": "^[0-9]+(ms|s|m)$" },
+        "body": { "type": ["object", "string"] }
       }
     },
     "sign": {

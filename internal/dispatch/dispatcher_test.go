@@ -121,4 +121,7 @@ func TestDispatchConnectionRefused(t *testing.T) {
 	if res.ErrorCode != "connection_refused" {
 		t.Fatalf("expected error_code connection_refused, got %q", res.ErrorCode)
 	}
+	if !bytes.Equal(res.RequestBody, []byte(`{"id":"x"}`)) {
+		t.Fatalf("expected RequestBody preserved on connection_refused, got %q", res.RequestBody)
+	}
 }

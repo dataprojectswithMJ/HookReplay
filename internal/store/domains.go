@@ -82,3 +82,18 @@ func (s *Store) MarkDomainVerified(ctx context.Context, wsID, domainID string) e
 	}
 	return nil
 }
+
+// IsVerifiedDomain reports whether the workspace has a verified domain whose
+// host matches exactly.
+func (s *Store) IsVerifiedDomain(ctx context.Context, wsID, host string) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM domains
+			WHERE workspace_id = $1 AND domain = $2 AND verified_at IS NOT NULL
+		)`, wsID, host).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("store: check verified domain: %w", err)
+	}
+	return ok, nil
+}

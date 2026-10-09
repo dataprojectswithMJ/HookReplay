@@ -20,9 +20,9 @@ export function Button({
   const base =
     "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed";
   const variants = {
-    primary: "bg-brand text-black hover:bg-emerald-300",
-    ghost: "border border-edge text-gray-300 hover:border-brand/50 hover:text-gray-100",
-    danger: "border border-red-500/30 text-red-300 hover:bg-red-500/10",
+    primary: "bg-brand text-black hover:bg-brandBright",
+    ghost: "border border-edge text-textMuted hover:border-brand/50 hover:text-white",
+    danger: "border border-fail/30 text-fail hover:bg-fail/10",
   };
   return <button className={`${base} ${variants[variant]} ${className}`} {...props} />;
 }
@@ -36,10 +36,10 @@ export function Badge({
 }) {
   const tones = {
     brand: "bg-brand/15 text-brand",
-    amber: "bg-amber-500/15 text-amber-300",
-    red: "bg-red-500/15 text-red-300",
-    neutral: "bg-white/10 text-gray-300",
-    accent: "bg-accent/15 text-accent",
+    amber: "bg-warn/15 text-warn",
+    red: "bg-fail/15 text-fail",
+    neutral: "bg-white/10 text-textMuted",
+    accent: "bg-brand/15 text-brand",
   };
   return (
     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${tones[tone]}`}>
@@ -74,7 +74,7 @@ export function EmptyState({
       <div className="max-w-sm px-6">
         <div className="text-3xl">◌</div>
         <h3 className="mt-3 font-semibold text-white">{title}</h3>
-        {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+        {description && <p className="mt-1 text-sm text-textFaint">{description}</p>}
         {action && <div className="mt-4">{action}</div>}
       </div>
     </div>
@@ -84,7 +84,7 @@ export function EmptyState({
 export function ErrorBanner({ message }: { message: string }) {
   if (!message) return null;
   return (
-    <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+    <div className="rounded-md border border-fail/30 bg-fail/10 px-3 py-2 text-sm text-fail">
       {message}
     </div>
   );
@@ -106,7 +106,7 @@ export function PageHeader({
       <div>
         <p className="font-mono text-sm text-brand">{eyebrow}</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">{title}</h1>
-        {subtitle && <p className="mt-2 max-w-xl text-gray-400">{subtitle}</p>}
+        {subtitle && <p className="mt-2 max-w-xl text-textMuted">{subtitle}</p>}
       </div>
       {action && <div className="flex items-center gap-2">{action}</div>}
     </div>
@@ -125,10 +125,10 @@ export function Stat({
   tone?: "neutral" | "good" | "bad";
 }) {
   const toneClass =
-    tone === "good" ? "text-brand" : tone === "bad" ? "text-red-400" : "text-gray-200";
+    tone === "good" ? "text-pass" : tone === "bad" ? "text-fail" : "text-textMuted";
   return (
     <div className="rounded-lg border border-edge bg-panel p-4">
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-textFaint">{label}</div>
       <div className={`mt-1 break-all text-sm ${mono ? "font-mono" : ""} ${toneClass}`}>
         {value}
       </div>
@@ -155,7 +155,7 @@ export function CopyButton({ text, className = "" }: { text: string; className?:
   return (
     <button
       onClick={copy}
-      className={`rounded border border-edge px-2 py-0.5 text-xs text-gray-400 transition hover:border-brand/50 hover:text-gray-200 ${className}`}
+      className={`rounded border border-edge px-2 py-0.5 text-xs text-textMuted transition hover:border-brand/50 hover:text-white ${className}`}
     >
       {copied ? "copied" : "copy"}
     </button>
@@ -173,7 +173,7 @@ export function CodeBlock({
     <div className="overflow-hidden rounded-lg border border-edge bg-base">
       {title && (
         <div className="flex items-center justify-between border-b border-edge px-3 py-2">
-          <span className="font-mono text-xs text-gray-500">{title}</span>
+          <span className="font-mono text-xs text-textFaint">{title}</span>
           <CopyButton text={code} />
         </div>
       )}
@@ -182,7 +182,7 @@ export function CodeBlock({
           <CopyButton text={code} />
         </div>
       )}
-      <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed text-gray-200">
+      <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed text-textMuted">
         {code}
       </pre>
     </div>

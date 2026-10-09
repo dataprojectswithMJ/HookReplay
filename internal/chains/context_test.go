@@ -1,6 +1,9 @@
 package chains
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestExtractJSON(t *testing.T) {
 	data := []byte(`{"status":"paid","data":{"object":{"id":"cs_1","amount_total":20000}}}`)
@@ -36,25 +39,6 @@ func TestResolveContext(t *testing.T) {
 	}
 }
 
-func TestEvalWhen(t *testing.T) {
-	rc := &runCtx{
-		target: "http://x",
-		steps:  map[string]StepResult{"checkout": {Status: 200}},
-	}
-	if run, err := rc.evalWhen("{{steps.checkout.status}} == 200"); err != nil || !run {
-		t.Fatalf("== 200 should run: got %v, %v", run, err)
-	}
-	if run, _ := rc.evalWhen("{{steps.checkout.status}} != 200"); run {
-		t.Fatal("!= 200 should be skipped")
-	}
-	if run, _ := rc.evalWhen("{{steps.checkout.status}} contains 2"); !run {
-		t.Fatal("contains 2 should run")
-	}
-	if run, _ := rc.evalWhen(""); !run {
-		t.Fatal("empty when should run")
-	}
-}
-
 func TestEvalExpect(t *testing.T) {
 	sr := StepResult{Status: 200, Body: []byte(`{"status":"paid"}`)}
 	if errs := evalExpect(&Expect{Status: 200}, sr); len(errs) != 0 {
@@ -71,5 +55,43 @@ func TestEvalExpect(t *testing.T) {
 	}
 	if errs := evalExpect(&Expect{Body: &BodyExpect{JSONPath: "status", Equals: "unpaid"}}, sr); len(errs) == 0 {
 		t.Fatal("body mismatch should fail")
+	}
+}
+
+func TestEvalExpectExists(t *testing.T) {
+	tr, fa := true, false
+	sr := StepResult{Status: 200, Body: []byte(`{"status":"paid"}`)}
+
+	if errs := evalExpect(&Expect{Body: &BodyExpect{JSONPath: "status", Exists: &tr}}, sr); len(errs) != 0 {
+		t.Fatalf("exists true on present path: got %v", errs)
+	}
+	if errs := evalExpect(&Expect{Body: &BodyExpect{JSONPath: "missing", Exists: &fa}}, sr); len(errs) != 0 {
+		t.Fatalf("exists false on absent path: got %v", errs)
+	}
+	if errs := evalExpect(&Expect{Body: &BodyExpect{JSONPath: "status", Exists: &fa}}, sr); len(errs) == 0 {
+		t.Fatal("exists false on present path should fail")
+	}
+	if errs := evalExpect(&Expect{Body: &BodyExpect{JSONPath: "missing", Exists: &tr}}, sr); len(errs) == 0 {
+		t.Fatal("exists true on absent path should fail")
+	}
+}
+
+func TestEvalExpectAPIMessage(t *testing.T) {
+	expect := &Expect{Body: &BodyExpect{JSONPath: "status", Equals: "paid"}}
+
+	if errs := evalExpect(expect, StepResult{Status: 200, Body: []byte(`{"status":"paid"}`)}); len(errs) != 0 {
+		t.Fatalf("paid should pass: got %v", errs)
+	}
+
+	sr := StepResult{Status: 200, Body: []byte(`{"status":200}`)}
+	errs := evalExpect(expect, sr)
+	if len(errs) == 0 {
+		t.Fatal("{\"status\":200} should fail equals paid")
+	}
+	msg := errs[0]
+	for _, want := range []string{"status", "paid", "200"} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("error %q should mention %q", msg, want)
+		}
 	}
 }

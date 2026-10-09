@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hookreplay/hookreplay/pkg/apiclient"
@@ -30,6 +31,16 @@ type Runner struct {
 	HTTP   *http.Client
 	Target string
 	Env    string
+
+	// Chain context stamped onto each webhook dispatch so executions can be
+	// linked back to the chain run (Logs lineage). Optional; server-side runs
+	// set these, CLI runs leave them empty.
+	ChainID    string
+	ChainRunID string
+
+	// TargetAllowed gates api/custom step URLs when the chain runs server-side.
+	// nil means no check (CLI runs fire from the user's own machine).
+	TargetAllowed func(string) bool
 }
 
 // Run executes the chain sequentially.
@@ -39,16 +50,6 @@ func (r *Runner) Run(ctx context.Context, c *Chain) (*RunResult, error) {
 
 	for i := range c.Steps {
 		step := &c.Steps[i]
-
-		run, err := rc.evalWhen(step.When)
-		if err != nil {
-			res.Steps = append(res.Steps, StepResult{Name: step.Name, Error: err.Error(), Failed: true})
-			continue
-		}
-		if !run {
-			res.Steps = append(res.Steps, StepResult{Name: step.Name, Skipped: true})
-			continue
-		}
 
 		if d, derr := parseDelay(step.Delay); derr == nil && d > 0 {
 			select {
@@ -60,17 +61,35 @@ func (r *Runner) Run(ctx context.Context, c *Chain) (*RunResult, error) {
 
 		sr, err := r.execute(ctx, step, rc)
 		if err != nil {
-			sr.Error = err.Error()
+			if sr.Error != "" {
+				// execute already recorded a structured error code (e.g.
+				// sign_error); keep the code and append the underlying detail.
+				sr.ExpectErrors = append(sr.ExpectErrors, err.Error())
+				sr.ExpectError = fmt.Sprintf("%s (%s)", sr.Error, err.Error())
+			} else {
+				sr.Error = err.Error()
+			}
 			sr.Failed = true
 		} else if step.Expect != nil {
 			if errs := evalExpect(step.Expect, sr); len(errs) > 0 {
 				sr.Failed = true
 				sr.ExpectErrors = errs
+				sr.ExpectError = strings.Join(errs, "; ")
 			}
 		}
+		sr.Passed = !sr.Failed && !sr.Skipped
 
 		rc.steps[step.Name] = sr
 		res.Steps = append(res.Steps, sr)
+
+		// Fail-fast: a failed step aborts the chain. Mark the remaining steps
+		// skipped so the UI/CLI can render "not run".
+		if sr.Failed {
+			for _, rest := range c.Steps[i+1:] {
+				res.Steps = append(res.Steps, StepResult{Name: rest.Name, Skipped: true})
+			}
+			break
+		}
 	}
 
 	res.Passed = true

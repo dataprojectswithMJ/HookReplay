@@ -27,10 +27,13 @@ func deliverySpecFor(webhook string) templates.DeliverySpec {
 // on a non-2xx response re-fire after each backoff interval (up to
 // maxAttempts), recording the observed retry count and delay sequence. It
 // stops early on a 2xx. intervals[0] is the initial attempt and is ignored.
+// A dispatch that returns an execution alongside its error (a recorded
+// pre-send or transport failure, status 0) counts as a failed attempt; only
+// an error with no execution aborts the rehearsal.
 func rehearseRetries(ctx context.Context, dispatch func() (*apiclient.Execution, error), intervals []string, maxAttempts int) (retries int, delays []string, final *apiclient.Execution, err error) {
-	exec, err := dispatch()
-	if err != nil {
-		return 0, nil, nil, err
+	exec, derr := dispatch()
+	if derr != nil && exec == nil {
+		return 0, nil, nil, derr
 	}
 	final = exec
 	if exec.ResponseStatus >= 200 && exec.ResponseStatus < 300 {
@@ -47,18 +50,21 @@ func rehearseRetries(ctx context.Context, dispatch func() (*apiclient.Execution,
 		if perr != nil {
 			continue
 		}
+		waitStart := time.Now()
 		select {
 		case <-time.After(d):
 		case <-ctx.Done():
 			return retries, delays, final, ctx.Err()
 		}
-		exec, err = dispatch()
-		if err != nil {
-			return retries, delays, final, err
+		exec, derr = dispatch()
+		if derr != nil && exec == nil {
+			return retries, delays, final, derr
 		}
 		final = exec
 		retries++
-		delays = append(delays, intervals[i])
+		// Record the observed wait, not the configured interval, so the
+		// ±20% tolerance in delaysMatch actually exercises real timing.
+		delays = append(delays, time.Since(waitStart).Round(time.Millisecond).String())
 		if exec.ResponseStatus >= 200 && exec.ResponseStatus < 300 {
 			break
 		}

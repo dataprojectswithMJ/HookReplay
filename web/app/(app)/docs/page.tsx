@@ -1,4 +1,10 @@
 import Link from "next/link";
+import {
+  DELIVER_REASONS,
+  ENVIRONMENTS,
+  SIGN_ALGORITHMS,
+  SIGN_ENCODINGS,
+} from "@/lib/chainMeta";
 
 const SECTIONS = [
   { id: "install", label: "Install" },
@@ -45,7 +51,7 @@ export default function DocsPage() {
               <a
                 key={s.id}
                 href={`#${s.id}`}
-                className="block rounded-md px-3 py-1.5 text-sm text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-200"
+                className="block rounded-md px-3 py-1.5 text-sm text-textMuted transition-colors hover:bg-white/5 hover:text-white"
               >
                 {s.label}
               </a>
@@ -59,7 +65,7 @@ export default function DocsPage() {
             <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
               Getting started
             </h1>
-            <p className="mt-3 max-w-xl text-gray-400">
+            <p className="mt-3 max-w-xl text-textMuted">
               Fire a provider-accurate, correctly-signed webhook at localhost or
               staging in under two minutes — then build multi-step chains to
               rehearse the whole conversation.
@@ -153,25 +159,36 @@ hookreplay api-keys create --name staging   # create a new named key`}</Code>
               A chain is a <Mono>hookreplay.yml</Mono> that rehearses a
               multi-step conversation — webhook in, API calls to your app,
               custom signed events out. Steps run in order;{" "}
-              <Mono>when</Mono> gates a step, <Mono>expect</Mono> asserts its
-              outcome.
+              <Mono>expect</Mono> asserts a step's outcome — a failed step
+              aborts the chain (remaining steps are skipped).
             </P>
             <Code>{CHAIN_YAML}</Code>
             <Table
               rows={[
-                ["steps[].webhook", "provider/event to sign and fire"],
-                ["steps[].api", "HTTP call to your app (method, url, headers)"],
+                ["name", "Chain name; [a-z0-9-], ≤64 chars"],
+                ["environment", `Selects env-scoped secrets + verified domain: ${ENVIRONMENTS.join(" | ")}`],
+                ["target", "Base URL; optional — the --target flag wins, ${ENV} interpolated"],
+                ["steps[].webhook", "provider/event template to sign and fire"],
+                ["steps[].secret", "env:NAME — names only, never values"],
+                ["steps[].override", "Dotted-path patches to the template payload"],
+                ["steps[].delay", "Wait before this step, e.g. 3s, 500ms"],
+                ["steps[].deliver", "Simulate a failure on a webhook step"],
+                ["steps[].deliver.reason", DELIVER_REASONS.join(" | ")],
+                ["steps[].api", "HTTP call to your app (method, url, headers, timeout, body)"],
+                ["steps[].api.method", "GET | POST | PUT | PATCH | DELETE"],
+                ["steps[].api.timeout", "Duration, e.g. 10s"],
+                ["steps[].api.body", "Inline JSON request body"],
                 ["steps[].custom", "Local payload with a custom sign block"],
-                ["secret", "env:NAME or an inline value"],
-                ["override", "Dotted-path patches to the template payload"],
-                ["delay", "Wait before this step (e.g. 3s)"],
-                ["deliver", "Simulate a failure: invalid_signature, malformed_payload, …"],
-                ["when", "Run only if: ==, !=, contains"],
-                ["expect.status", "int or range (2xx)"],
+                ["steps[].custom.url", "Target override (absolute URL or env:NAME)"],
+                ["steps[].custom.sign.algorithm", SIGN_ALGORITHMS.join(" | ")],
+                ["steps[].custom.sign.encoding", `${SIGN_ENCODINGS.join(" | ")} (default hex)`],
+                ["steps[].custom.sign.secret", "env:NAME — names only"],
+                ["steps[].custom.sign.header", "Signature header name, e.g. X-Signature"],
+                ["expect.status", "int (200) or range (2xx)"],
                 ["expect.latency_under", "Fail if the step was slower than this"],
                 ["expect.retries", "Assert the re-delivery count (rehearsed)"],
                 ["expect.delays", "Assert the exact backoff sequence"],
-                ["expect.body", "json_path + equals / contains / exists"],
+                ["expect.body", "json_path + equals / contains / exists (bool)"],
               ]}
             />
             <P>
@@ -197,11 +214,11 @@ hookreplay api-keys create --name staging   # create a new named key`}</Code>
             />
             <P>
               <Mono>env:NAME</Mono> resolves from the shell environment first,
-              then the workspace secret store (set with{" "}
-              <Mono>hookreplay secrets set NAME</Mono>). Secrets are write-only
-              and never printed. A step can gate on an earlier step with{" "}
-              <Mono>when</Mono>: <Mono>==</Mono>, <Mono>!=</Mono>,{" "}
-              <Mono>contains</Mono>, <Mono>exists</Mono>.
+              then the workspace store (set in the Variables tab). Secrets are
+              encrypted and masked; variables (URLs, non-sensitive config) are
+              visible and editable. Body assertions use{" "}
+              <Mono>expect.body</Mono> with <Mono>equals</Mono>,{" "}
+              <Mono>contains</Mono>, or <Mono>exists</Mono>.
             </P>
             <Code>{`steps:
   - name: checkout
@@ -211,7 +228,6 @@ hookreplay api-keys create --name staging   # create a new named key`}</Code>
     api:
       method: GET
       url: "{{target}}/orders/{{steps.checkout.body.data.object.id}}"
-    when: "{{steps.checkout.status}} == 200"     # only if the step above succeeded
     expect:
       status: 200
       body:
@@ -224,7 +240,9 @@ hookreplay api-keys create --name staging   # create a new named key`}</Code>
               Templates bundle a payload, a <Mono>sign.yml</Mono> scheme, and a{" "}
               <Mono>delivery.yml</Mono> retry schedule. Every payload is signed
               at dispatch time, and a separate <Mono>Verify</Mono> implementation
-              checks each scheme in tests.
+              checks each scheme in tests. These <Mono>provider/event</Mono>{" "}
+              values are the accepted <Mono>webhook:</Mono> values in a chain
+              step.
             </P>
             <Table
               rows={[
@@ -297,12 +315,12 @@ function Section({
 
 function H3({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="pt-2 text-base font-semibold text-gray-100">{children}</h3>
+    <h3 className="pt-2 text-base font-semibold text-white">{children}</h3>
   );
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p className="leading-relaxed text-gray-300">{children}</p>;
+  return <p className="leading-relaxed text-textMuted">{children}</p>;
 }
 
 function Mono({ children }: { children: React.ReactNode }) {
@@ -315,7 +333,7 @@ function Mono({ children }: { children: React.ReactNode }) {
 
 function Code({ children }: { children: string }) {
   return (
-    <pre className="overflow-x-auto rounded-lg border border-edge bg-base p-4 font-mono text-xs leading-relaxed text-gray-200">
+    <pre className="overflow-x-auto rounded-lg border border-edge bg-base p-4 font-mono text-xs leading-relaxed text-textMuted">
       {children}
     </pre>
   );
@@ -331,7 +349,7 @@ function Table({ rows }: { rows: [string, string][] }) {
               <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-brand">
                 {cmd}
               </td>
-              <td className="px-4 py-2.5 text-gray-300">{desc}</td>
+              <td className="px-4 py-2.5 text-textMuted">{desc}</td>
             </tr>
           ))}
         </tbody>

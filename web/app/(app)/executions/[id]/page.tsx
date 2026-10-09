@@ -11,7 +11,7 @@ import {
   Spinner,
   Stat,
 } from "@/components/ui";
-import { Execution, decodeBase64, getExecution } from "@/lib/api";
+import { Execution, decodeBase64, deliveryFailed, deliveryLabel, getExecution } from "@/lib/api";
 
 export default function ExecutionDetailPage() {
   const params = useParams<{ id: string }>();
@@ -26,7 +26,7 @@ export default function ExecutionDetailPage() {
   }, [params?.id]);
 
   const statusTone: "neutral" | "good" | "bad" =
-    e && (e.error_code || e.response_status >= 400)
+    e && (e.error_code || deliveryFailed(e.deliver) || e.response_status >= 400)
       ? "bad"
       : e && e.response_status >= 200
       ? "good"
@@ -35,7 +35,7 @@ export default function ExecutionDetailPage() {
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-6xl px-6 py-12">
-        <Link href="/log" className="text-sm text-gray-400 hover:text-brand">
+        <Link href="/log" className="text-sm text-textMuted hover:text-brand">
           ← back to log
         </Link>
 
@@ -57,13 +57,13 @@ export default function ExecutionDetailPage() {
               <h1 className="text-2xl font-bold text-white">
                 {e.template_id || e.step_name}
               </h1>
-              <span className="font-mono text-sm text-gray-500">{e.id}</span>
+              <span className="font-mono text-sm text-textFaint">{e.id}</span>
               <CopyButton text={e.id} />
               {e.attempt > 1 && <Badge tone="amber">attempt {e.attempt}</Badge>}
             </div>
 
             {e.parent_execution_id && (
-              <div className="mt-3 text-sm text-gray-400">
+              <div className="mt-3 text-sm text-textMuted">
                 Retry of{" "}
                 <Link
                   href={`/executions/${e.parent_execution_id}`}
@@ -79,6 +79,11 @@ export default function ExecutionDetailPage() {
                 label="Status"
                 value={e.error_code || `HTTP ${e.response_status}`}
                 tone={statusTone}
+              />
+              <Stat
+                label="Delivery"
+                value={deliveryLabel(e.deliver) || "success"}
+                tone={deliveryFailed(e.deliver) ? "bad" : "good"}
               />
               <Stat label="Latency" value={`${e.latency_ms} ms`} />
               <Stat label="Target" value={e.target} mono />
@@ -114,7 +119,7 @@ export default function ExecutionDetailPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-6">
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-textFaint">
         {title}
       </h2>
       {children}
@@ -124,13 +129,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Kv({ data }: { data: Record<string, string> }) {
   const entries = Object.entries(data || {});
-  if (entries.length === 0) return <p className="text-sm text-gray-600">—</p>;
+  if (entries.length === 0) return <p className="text-sm text-textFaint">—</p>;
   return (
     <div className="overflow-hidden rounded-lg border border-edge bg-base">
       {entries.map(([k, v]) => (
         <div key={k} className="flex gap-4 border-b border-edge px-4 py-2 last:border-0">
-          <span className="w-56 shrink-0 font-mono text-xs text-gray-400">{k}</span>
-          <span className="break-all font-mono text-xs text-gray-200">{v}</span>
+          <span className="w-56 shrink-0 font-mono text-xs text-textMuted">{k}</span>
+          <span className="break-all font-mono text-xs text-textMuted">{v}</span>
         </div>
       ))}
     </div>

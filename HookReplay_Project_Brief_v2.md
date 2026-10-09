@@ -93,7 +93,7 @@ Postman owns REST API testing. Webhook testing is contested but unsolved: incumb
 **Execution semantics:**
 - Steps run in order; each fires a webhook (signed at dispatch time) or makes an API call against the user's app
 - Steps extract values from previous steps' HTTP responses via `{{steps.<name>.body...}}` — that's what makes it a chain
-- Conditionals (`when`), delays, and concurrency caps
+- Delays and concurrency caps (a failed `expect` aborts the chain — remaining steps are skipped)
 - Two placeholder syntaxes, cleanly separated: `${VAR}` = env interpolation by the CLI before the run (e.g. `${TUNNEL_URL}`); `{{...}}` = runtime values from the chain context while steps execute
 
 **The `deliver`/`expect` model** (revised 2026-09-26 — supersedes the earlier `fail`/`idempotency` design):
@@ -124,7 +124,6 @@ steps:
     webhook: resend/email.delivered
     secret: env:RESEND_WEBHOOK_SECRET
     delay: 3s
-    when: "{{steps.order-must-exist.status}} == 200"
 ```
 
 - **`deliver`** — how the webhook is sent. `result: success` (default) or `result: fail` with a `reason` enum: `invalid_signature | missing_signature | stale_signature | malformed_payload | connection_refused`. **Boundary rule: `reason` may only contain failures HookReplay controls** (what we send). Endpoint-side failures are rehearsed with a debug flag in the user's app (e.g. `?force_fail=1`); HookReplay plays the provider's half of the conversation.
@@ -262,12 +261,12 @@ Paystack ──► hooks.hookreplay.dev/acme/capture/paystack
 
 | Tier | Price | Who | Features |
 |------|-------|-----|----------|
-| **Free** | $0 | Solo devs exploring | 1,000 simulation executions/mo (~30/day), 3 concurrent chains, 5 provider templates, **CLI included** (tunnel + chains at localhost — the CLI is the adoption engine, never a paywall), tunnel targets only (verified staging domains gate below), built-in PII redaction schema, 7-day logs, 1 user |
-| **Pro** | $19/seat/mo | Individual devs & small teams | **Unlimited executions** (fair use, §7), unlimited chains (concurrency-capped), all provider templates, custom webhooks + private templates, custom signing schemes, **`--env staging`: fire at verified domains**, failure sim, 30-day logs. Replay add-on: $10 per 500 replays, metered |
+| **Free** | $0 | Solo devs exploring | 1,000 simulation executions/mo (~30/day), 3 concurrent chains, 5 provider templates, **CLI included** (tunnel + chains at localhost — the CLI is the adoption engine, never a paywall), **domain verification included** (fire at any verified domain, all tiers), custom webhooks, built-in PII redaction schema, 7-day logs, 1 user |
+| **Pro** | $19/seat/mo | Individual devs & small teams | **Unlimited executions** (fair use, §7), unlimited chains (concurrency-capped), all provider templates, private templates (reusable across chains + shared), custom signing schemes, failure sim, 30-day logs. Replay add-on: $10 per 500 replays, metered |
 | **Team** | **$59/mo flat** (first 5 seats, ~$10/seat after) | Startups & SaaS builders | Everything in Pro + **2,000 replays/mo included**, sanitization schemas, shared workspaces + workspace templates, **GitHub Action** (server-side tier enforcement; the Action is a thin CLI wrapper, and its 403 error message is the upsell — 14-day trial triggered from it), usage analytics, 90-day logs |
 | **Enterprise** | Custom (anchor ~$499/mo) | Big orgs with compliance needs | Unlimited replay, SSO/SAML, audit logs, SLA, SOC 2 (roadmap), dedicated support, **on-prem/VPC recorder agent** |
 
-**Go-to-market:** Product-led growth. Free tier drives adoption; Pro converts on chains + custom webhooks; Team converts on replay + shared workspaces. Annual billing: 2 months free at paid tiers; grandfather launch users permanently.
+**Go-to-market:** Product-led growth. Free tier drives adoption; Pro converts on scale (unlimited executions) + private templates; Team converts on replay + shared workspaces. Annual billing: 2 months free at paid tiers; grandfather launch users permanently.
 
 **Validation plan:** ship limits as above; instrument for 60 days — median executions/mo per free user (sets free ceiling), replays/mo per Team trial (validates 2,000), free→Pro conversion (validates chain gate). Adjust **limits, not sticker prices**.
 
@@ -347,7 +346,7 @@ PROD (P3): Provider → Recorder (streaming proxy; forward opens immediately,
 - [ ] Free + Pro tiers
 
 ### Phase 2: Chaining + Growth (Weeks 7–12)
-- [ ] Chains-as-code engine: extraction, conditionals, `deliver`/`expect`, concurrency caps
+- [ ] Chains-as-code engine: extraction, `deliver`/`expect` (fail-fast), concurrency caps
 - [ ] Fast-follow templates (8)
 - [ ] Private templates (save custom payloads + signing configs)
 - [ ] GitHub Action (`hookreplay run --env staging --fail-on expect`)
@@ -395,7 +394,7 @@ PROD (P3): Provider → Recorder (streaming proxy; forward opens immediately,
 | 2026-09-26 | Community templates: Phase 3 | Quality/moderation burden before PMF |
 | 2026-09-26 | Recorder = **streaming proxy**: downstream forward opens immediately, body streams chunk-by-chunk, response relays back, and only after the provider's connection closes does the async sanitize→encrypt→persist run | Capture must add ~one network hop (~10–50ms), never sit on the provider's 5–30s timeout clock. Storage failures degrade capture completeness, never delivery |
 | 2026-09-26 | **Sanitize at capture; never persist raw.** Stored = sanitized body + redactions manifest only; original signature headers not stored (secret-derived in some schemes); endpoint responses short-retention; sole exception = encrypted forward-retry buffer with minutes-level TTL | Data liability is structural, not contractual — "we never keep your raw payloads" beats any encryption badge for SOC 2/GDPR. Accepted trade-off: replay is byte-identical to the *sanitized* event; hash-pseudonyms preserve correlation; `keep-verbatim` per-path exceptions are the escape hatch |
-| 2026-09-26 | Free tier includes the full CLI (tunnel, single-fire, 3 chains at localhost). The upgrade gate is **target type**: verified staging domains = Pro+, CI/staging chain runs = Team | CLI is the adoption engine, not a paywall; target-type gating is enforceable server-side via domain verification, unlike client feature flags |
+| 2026-09-26 | Free tier includes the full CLI (tunnel, single-fire, 3 chains at localhost) **and domain verification** (free, universal security control). The upgrade gate is **volume/replay/team**, not target type | CLI + verification are the adoption/trust engine, not a paywall; verification proves ownership and closes SSRF; monetize on scale + replay + team, not "prove you own a domain" |
 | 2026-09-26 | GitHub Action = thin CLI wrapper in Marketplace; tier enforcement server-side on the API key's workspace; 403 error message carries the trial upsell | Never trust client-side tier checks; the CI error log is the highest-converting upsell surface we own |
 
 ---

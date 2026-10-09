@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/hookreplay/hookreplay/internal/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,7 +21,8 @@ var migrationsFS embed.FS
 
 // Store wraps a pgx connection pool.
 type Store struct {
-	pool *pgxpool.Pool
+	pool       *pgxpool.Pool
+	sessionTTL time.Duration
 }
 
 // Principal is the authenticated caller resolved from an API key.
@@ -56,7 +58,7 @@ func New(ctx context.Context, databaseURL string, devAPIKey string) (*Store, err
 	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("store: ping: %w", err)
 	}
-	s := &Store{pool: pool}
+	s := &Store{pool: pool, sessionTTL: defaultSessionTTL()}
 	if err := s.migrate(ctx); err != nil {
 		return nil, err
 	}
@@ -64,6 +66,20 @@ func New(ctx context.Context, databaseURL string, devAPIKey string) (*Store, err
 		return nil, err
 	}
 	return s, nil
+}
+
+// defaultSessionTTL returns the user-session lifetime, read from
+// HOOKREPLAY_SESSION_TTL (a Go duration, e.g. "1h", "30m"). Defaults to 1h.
+func defaultSessionTTL() time.Duration {
+	v := os.Getenv("HOOKREPLAY_SESSION_TTL")
+	if v == "" {
+		return time.Hour
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		return time.Hour
+	}
+	return d
 }
 
 // Close releases the connection pool.

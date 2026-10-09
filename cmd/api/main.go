@@ -143,6 +143,10 @@ func main() {
 	mux.Handle("POST /v1/domains/{id}/verify", srv.requireScope(auth.ScopeAdmin, srv.handleVerifyDomain))
 	mux.Handle("GET /v1/executions", srv.requireScope(auth.ScopeRead, srv.handleListExecutions))
 	mux.Handle("GET /v1/executions/{id}", srv.requireScope(auth.ScopeRead, srv.handleGetExecution))
+	mux.Handle("GET /v1/chains/{id}/runs", srv.requireScope(auth.ScopeRead, srv.handleListChainRuns))
+	mux.Handle("GET /v1/runs", srv.requireScope(auth.ScopeRead, srv.handleListRuns))
+	mux.Handle("GET /v1/runs/{id}", srv.requireScope(auth.ScopeRead, srv.handleGetChainRun))
+	mux.Handle("GET /v1/runs/{id}/executions", srv.requireScope(auth.ScopeRead, srv.handleListRunExecutions))
 	mux.Handle("GET /v1/me", srv.requireScope(auth.ScopeRead, srv.handleMe))
 	mux.Handle("GET /v1/secrets", srv.requireScope(auth.ScopeRead, srv.handleListSecrets))
 	mux.Handle("GET /v1/workspaces", srv.requireScope(auth.ScopeRead, srv.handleListWorkspaces))
@@ -177,4 +181,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-

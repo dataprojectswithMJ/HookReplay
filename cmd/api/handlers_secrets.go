@@ -40,9 +40,18 @@ func (s *server) handleSetSecret(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		Value string `json:"value"`
+		Kind  string `json:"kind"` // "secret" (default) | "variable"
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&body); err != nil || body.Value == "" {
 		writeError(w, http.StatusBadRequest, "invalid_request", "value is required", reqID)
+		return
+	}
+	if body.Kind == "variable" {
+		if err := s.store.SetVariable(r.Context(), pr.WorkspaceID, env, name, body.Value); err != nil {
+			writeError(w, http.StatusInternalServerError, "internal_error", err.Error(), reqID)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "stored", "kind": "variable", "env": env, "name": name})
 		return
 	}
 	ct, err := crypt.Encrypt([]byte(body.Value), s.masterKey)
@@ -54,7 +63,7 @@ func (s *server) handleSetSecret(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal_error", err.Error(), reqID)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "stored", "env": env, "name": name})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "stored", "kind": "secret", "env": env, "name": name})
 }
 
 func (s *server) handleDeleteSecret(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +84,7 @@ func (s *server) handleListSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]apiclient.SecretName, 0, len(list))
 	for _, m := range list {
-		out = append(out, apiclient.SecretName{Env: m.Env, Name: m.Name, UpdatedAt: m.UpdatedAt})
+		out = append(out, apiclient.SecretName{Env: m.Env, Name: m.Name, Kind: m.Kind, Value: m.Value, UpdatedAt: m.UpdatedAt})
 	}
 	writeJSON(w, http.StatusOK, out)
 }

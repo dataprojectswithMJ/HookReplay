@@ -23,7 +23,7 @@ export default function UsagePage() {
         <h1 className="mt-2 text-3xl font-bold text-white">Usage</h1>
 
         {error && (
-          <p className="mt-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <p className="mt-4 rounded-md border border-fail/30 bg-fail/10 px-3 py-2 text-sm text-fail">
             {error}
           </p>
         )}
@@ -58,7 +58,7 @@ export default function UsagePage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-edge bg-panel p-5">
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-textFaint">{label}</div>
       <div className="mt-1 text-2xl font-semibold text-white">{value}</div>
     </div>
   );

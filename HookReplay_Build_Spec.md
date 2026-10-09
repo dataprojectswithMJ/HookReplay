@@ -361,7 +361,7 @@ CLI never prints secret values; `run` resolves `env:` refs in-memory.
 - **DoD:** golden-file tests for `fmt`/`validate`; scripted e2e against a local stack (WS-2 + WS-7) covering the three landing-page scenarios: single fire, forged-webhook rejection, retry rehearsal with `expect.retries`.
 
 ### WS-4 — Chain engine (internal/chains)
-- Parser/validator per §6 JSON-schema; runtime context resolution (`{{}}`); `when` evaluator (== != contains exists); expect evaluator (status/latency/retries/delays/body json_path).
+- Parser/validator per §6 JSON-schema; runtime context resolution (`{{}}`); fail-fast expect evaluator (status/latency/retries/delays/body json_path).
 - **DoD:** schema fuzzing (no panics on 10k mutated inputs); extraction-failure errors name the exact path; full example suite from `templates/examples/` passes.
 
 ### WS-5 — Template library (templates/)
@@ -402,7 +402,7 @@ CLI never prints secret values; `run` resolves `env:` refs in-memory.
 | **M1 (wk 2)** | WS-1 schemes + CI vectors for Stripe/Paystack/Razorpay from sandboxes; chain schema frozen (`pkg/chainschema`) | Vectors green in CI |
 | **M2 (wk 4)** | WS-2 dispatcher (rate limit, breaker, idempotency, raw-byte storage) + WS-7 tunnel | k6 + relay latency DoDs |
 | **M3 (wk 6)** | WS-3 CLI (`run`, `tunnel`, `validate`), WS-5 launch templates, WS-8 free/pro enforcement | Landing-page demo scenarios pass e2e; sandbox gate green for all payment templates |
-| **M4 (wk 9)** | WS-4 full chain engine (`when`, extraction, expect incl. retries/delays), `chains push/pull`, GitHub Action, WS-6 dashboard execution log + chain editor | Retry-rehearsal e2e passes against real staging URL with `--fail-on expect` |
+| **M4 (wk 9)** | WS-4 full chain engine (extraction, fail-fast expect incl. retries/delays), `chains push/pull`, GitHub Action, WS-6 dashboard execution log + chain editor | Retry-rehearsal e2e passes against real staging URL with `--fail-on expect` |
 | **M5 (wk 12)** | Team workspaces, private templates, usage analytics, fast-follow templates, hardening + launch | Load + chaos DoDs; §12 kill-criteria instrumentation live |
 
 Phase 3 (WS-9 full) starts only after M5 + 60-day instrumentation review per brief §6.
@@ -424,7 +424,7 @@ Phase 3 (WS-9 full) starts only after M5 + 60-day instrumentation review per bri
 - Arbitrary scripting/loops in chain YAML (SDK/CI glue is the escape hatch).
 - Webhook delivery infrastructure (gateways, queues for the user) — we simulate and replay; we are not Hookdeck.
 - `secrets get`, secret value echo anywhere.
-- Multi-step conditional branching trees — `when` skip only.
+- Multi-step conditional branching trees (data-driven `when` gating) — deferred; fail-fast `expect` covers "stop on failure".
 - **Durable raw-payload storage, anywhere, for any reason.** Raw capture material is in-memory-only (§7.6); if a requirement seems to need raw at rest, that is a design-error signal — escalate, don't implement.
 - Store-and-forward capture (receive-all → then forward) — the streaming proxy exists precisely to forbid this.
 

@@ -8,23 +8,40 @@ import (
 	"github.com/hookreplay/hookreplay/internal/id"
 )
 
-// SecretMeta is the only shape a secret is ever listed in (never its value).
+// SecretMeta is the shape a secret/variable is listed in. Secrets never expose
+// their value; variables do.
 type SecretMeta struct {
 	Env       string
 	Name      string
+	Kind      string
+	Value     string
 	UpdatedAt time.Time
 }
 
 // SetSecret upserts the ciphertext of a secret (write-only).
 func (s *Store) SetSecret(ctx context.Context, workspaceID, env, name string, ciphertext []byte) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO secrets (id, workspace_id, env, name, ciphertext)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO secrets (id, workspace_id, env, name, kind, ciphertext)
+		VALUES ($1, $2, $3, $4, 'secret', $5)
 		ON CONFLICT (workspace_id, env, name)
-		DO UPDATE SET ciphertext = EXCLUDED.ciphertext, updated_at = now()`,
+		DO UPDATE SET kind = 'secret', ciphertext = EXCLUDED.ciphertext, value = NULL, updated_at = now()`,
 		id.New("sec_"), workspaceID, env, name, ciphertext)
 	if err != nil {
 		return fmt.Errorf("store: set secret: %w", err)
+	}
+	return nil
+}
+
+// SetVariable upserts a plaintext variable (readable/editable).
+func (s *Store) SetVariable(ctx context.Context, workspaceID, env, name, value string) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO secrets (id, workspace_id, env, name, kind, value)
+		VALUES ($1, $2, $3, $4, 'variable', $5)
+		ON CONFLICT (workspace_id, env, name)
+		DO UPDATE SET kind = 'variable', value = EXCLUDED.value, ciphertext = NULL, updated_at = now()`,
+		id.New("sec_"), workspaceID, env, name, value)
+	if err != nil {
+		return fmt.Errorf("store: set variable: %w", err)
 	}
 	return nil
 }
@@ -40,10 +57,11 @@ func (s *Store) DeleteSecret(ctx context.Context, workspaceID, env, name string)
 	return nil
 }
 
-// ListSecrets returns names + envs + updated_at only — never values.
+// ListSecrets returns names + envs + kind + updated_at. Variables include their
+// value; secrets never do.
 func (s *Store) ListSecrets(ctx context.Context, workspaceID string) ([]SecretMeta, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT env, name, updated_at FROM secrets WHERE workspace_id = $1 ORDER BY env, name`,
+		`SELECT env, name, kind, COALESCE(value, ''), updated_at FROM secrets WHERE workspace_id = $1 ORDER BY env, name`,
 		workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("store: list secrets: %w", err)
@@ -52,7 +70,7 @@ func (s *Store) ListSecrets(ctx context.Context, workspaceID string) ([]SecretMe
 	var out []SecretMeta = []SecretMeta{}
 	for rows.Next() {
 		var m SecretMeta
-		if err := rows.Scan(&m.Env, &m.Name, &m.UpdatedAt); err != nil {
+		if err := rows.Scan(&m.Env, &m.Name, &m.Kind, &m.Value, &m.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
@@ -65,7 +83,7 @@ func (s *Store) ListSecrets(ctx context.Context, workspaceID string) ([]SecretMe
 func (s *Store) GetSecretCiphertext(ctx context.Context, workspaceID, env, name string) ([]byte, error) {
 	var ct []byte
 	err := s.pool.QueryRow(ctx,
-		`SELECT ciphertext FROM secrets WHERE workspace_id = $1 AND env = $2 AND name = $3`,
+		`SELECT ciphertext FROM secrets WHERE workspace_id = $1 AND env = $2 AND name = $3 AND kind = 'secret'`,
 		workspaceID, env, name).Scan(&ct)
 	if err != nil {
 		return nil, fmt.Errorf("store: get secret ciphertext: %w", err)

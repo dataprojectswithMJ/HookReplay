@@ -11,13 +11,13 @@ export default function ResultStat({
 }) {
   const toneClass =
     tone === "good"
-      ? "text-brand"
+      ? "text-pass"
       : tone === "bad"
-      ? "text-red-400"
-      : "text-gray-200";
+      ? "text-fail"
+      : "text-textMuted";
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-textFaint">{label}</div>
       <div
         className={`mt-0.5 break-all text-sm ${mono ? "font-mono" : ""} ${toneClass}`}
       >

@@ -56,7 +56,7 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <Card key={s.label} className="p-5">
-            <div className="text-xs text-gray-500">{s.label}</div>
+            <div className="text-xs text-textFaint">{s.label}</div>
             <div className="mt-1 text-2xl font-semibold text-white">{s.value}</div>
           </Card>
         ))}
@@ -75,9 +75,9 @@ export default function DashboardPage() {
               <Spinner />
             </div>
           ) : execs.length === 0 ? (
-            <p className="mt-4 text-sm text-gray-600">
+            <p className="mt-4 text-sm text-textFaint">
               No executions yet.{" "}
-              <Link href="/fire" className="text-brand hover:underline">
+              <Link href="/templates" className="text-brand hover:underline">
                 Fire your first webhook
               </Link>
               .
@@ -90,14 +90,14 @@ export default function DashboardPage() {
                     href={`/executions/${e.id}`}
                     className="flex items-center justify-between gap-2 py-2.5"
                   >
-                    <span className="truncate font-mono text-sm text-gray-200">
+                    <span className="truncate font-mono text-sm text-textMuted">
                       {e.template_id || e.step_name}
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <Badge tone={e.error_code || e.response_status >= 400 ? "red" : "brand"}>
                         {e.error_code || `HTTP ${e.response_status}`}
                       </Badge>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-textFaint">
                         {new Date(e.created_at).toLocaleTimeString()}
                       </span>
                     </span>
@@ -111,9 +111,9 @@ export default function DashboardPage() {
         <Card className="p-5">
           <h2 className="font-semibold text-white">Quick actions</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Action href="/fire" title="Fire a webhook" desc="Sign and dispatch a single event" />
+            <Action href="/templates" title="Fire a webhook" desc="Sign and dispatch a single event" />
             <Action href="/chains" title="Run a chain" desc="Rehearse a multi-step flow" />
-            <Action href="/templates" title="Browse templates" desc="Stripe, GitHub, Slack, and more" />
+            <Action href="/templates" title="Browse templates" desc="Preview payloads and signing schemes" />
             <Action href="/docs" title="Read the docs" desc="Getting started guide" />
           </div>
         </Card>
@@ -128,8 +128,8 @@ function Action({ href, title, desc }: { href: string; title: string; desc: stri
       href={href}
       className="rounded-lg border border-edge p-4 transition hover:border-brand/40 hover:bg-white/[0.02]"
     >
-      <div className="font-medium text-gray-100">{title}</div>
-      <div className="mt-1 text-xs text-gray-500">{desc}</div>
+      <div className="font-medium text-white">{title}</div>
+      <div className="mt-1 text-xs text-textFaint">{desc}</div>
     </Link>
   );
 }

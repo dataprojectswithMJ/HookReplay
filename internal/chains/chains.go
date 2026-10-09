@@ -31,12 +31,12 @@ type Step struct {
 	Delay    string         `yaml:"delay"`
 	Deliver  *Deliver       `yaml:"deliver"`
 	Expect   *Expect        `yaml:"expect"`
-	When     string         `yaml:"when"`
 }
 
 // CustomStep fires an arbitrary signed payload (§6 custom).
 type CustomStep struct {
 	Payload any               `yaml:"payload"` // string (file path) or inline map
+	URL     string            `yaml:"url"`     // optional target override; defaults to chain target
 	Headers map[string]string `yaml:"headers"`
 	Sign    *SignConfig       `yaml:"sign"`
 }
@@ -57,6 +57,7 @@ type APIStep struct {
 	URL     string            `yaml:"url"`
 	Headers map[string]string `yaml:"headers"`
 	Timeout string            `yaml:"timeout"`
+	Body    any               `yaml:"body"` // optional JSON body (map or raw string)
 }
 
 // Deliver configures failure simulation.

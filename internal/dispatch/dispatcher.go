@@ -87,7 +87,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, req Request) (Result, error) 
 	// Gate before doing any work: if the breaker is open, nothing is sent or
 	// signed.
 	if err := d.breaker.Allow(host); err != nil {
-		return Result{ErrorCode: "circuit_open", RequestHeaders: headers}, err
+		return Result{ErrorCode: "circuit_open", RequestHeaders: headers, RequestBody: body}, err
 	}
 
 	var sigHeader http.Header
@@ -107,6 +107,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, req Request) (Result, error) 
 		case "connection_refused":
 			res, err := d.connectionRefused(req.Target.URL)
 			res.RequestHeaders = headers
+			res.RequestBody = body
 			return res, err
 		}
 	}
@@ -114,7 +115,8 @@ func (d *Dispatcher) Dispatch(ctx context.Context, req Request) (Result, error) 
 	if !skipSign && req.Scheme != "" {
 		hdr, err := signing.Sign(req.Scheme, body, signing.Material{Key: secret, Custom: req.Custom}, signTS)
 		if err != nil {
-			return Result{}, err
+			return Result{ErrorCode: "sign_error", RequestHeaders: headers, RequestBody: body},
+				fmt.Errorf("dispatch: sign: %w", err)
 		}
 		sigHeader = hdr.Clone()
 		for k, vs := range hdr {
@@ -126,7 +128,8 @@ func (d *Dispatcher) Dispatch(ctx context.Context, req Request) (Result, error) 
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, req.Target.URL, bytes.NewReader(body))
 	if err != nil {
-		return Result{}, fmt.Errorf("dispatch: build request: %w", err)
+		return Result{ErrorCode: "invalid_target", RequestHeaders: headers, RequestBody: body},
+			fmt.Errorf("dispatch: build request: %w", err)
 	}
 	httpReq.Header = headers
 

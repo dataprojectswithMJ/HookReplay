@@ -56,14 +56,14 @@ export default function WorkspacePage() {
       )}
 
       <Card className="mt-6 p-5">
-        <label className="block text-xs text-gray-500">New workspace name</label>
+        <label className="block text-xs text-textFaint">New workspace name</label>
         <div className="mt-2 flex gap-2">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onCreate()}
             placeholder="my-team"
-            className="flex-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-gray-200 outline-none focus:border-brand/50"
+            className="flex-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-textMuted outline-none focus:border-brand/50"
           />
           <Button onClick={onCreate} disabled={busy || !name.trim()}>
             {busy ? "Creating…" : "Create workspace"}
@@ -87,9 +87,9 @@ export default function WorkspacePage() {
           {workspaces.map((ws) => (
             <Card key={ws.id} className="p-5">
               <div className="font-semibold text-white">{ws.name}</div>
-              <div className="mt-1 font-mono text-xs text-gray-500">{ws.id}</div>
+              <div className="mt-1 font-mono text-xs text-textFaint">{ws.id}</div>
               <div className="mt-3 flex items-center gap-2">
-                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-gray-300">
+                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-textMuted">
                   {ws.tier}
                 </span>
                 <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-xs text-brand">

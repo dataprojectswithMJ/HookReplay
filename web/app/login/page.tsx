@@ -74,7 +74,7 @@ export default function LoginPage() {
             ✓
           </div>
           <h1 className="mt-4 text-xl font-bold text-white">You&apos;re signed in</h1>
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-textMuted">
             Return to your terminal — the CLI detects this automatically. You can
             close this tab.
           </p>
@@ -103,26 +103,26 @@ export default function LoginPage() {
         <h1 className="mt-8 text-2xl font-bold text-white">
           {mode === "login" ? "Sign in" : "Create your account"}
         </h1>
-        <p className="mt-2 text-sm text-gray-400">
+        <p className="mt-2 text-sm text-textMuted">
           Fire provider-accurate, correctly-signed webhooks at localhost and staging.
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             onClick={() => oauth("google")}
-            className="rounded-md border border-edge py-2.5 text-sm font-medium text-gray-200 transition hover:bg-white/5"
+            className="rounded-md border border-edge py-2.5 text-sm font-medium text-textMuted transition hover:bg-white/5"
           >
             Google
           </button>
           <button
             onClick={() => oauth("github")}
-            className="rounded-md border border-edge py-2.5 text-sm font-medium text-gray-200 transition hover:bg-white/5"
+            className="rounded-md border border-edge py-2.5 text-sm font-medium text-textMuted transition hover:bg-white/5"
           >
             GitHub
           </button>
         </div>
 
-        <div className="my-6 flex items-center gap-3 text-xs text-gray-600">
+        <div className="my-6 flex items-center gap-3 text-xs text-textFaint">
           <span className="h-px flex-1 bg-edge" />
           or with email
           <span className="h-px flex-1 bg-edge" />
@@ -130,36 +130,36 @@ export default function LoginPage() {
 
         <form onSubmit={submit} className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500">Email</label>
+            <label className="block text-xs text-textFaint">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="mt-1 w-full rounded-md border border-edge bg-panel px-3 py-2 text-sm text-gray-200 outline-none focus:border-brand/50"
+              className="mt-1 w-full rounded-md border border-edge bg-panel px-3 py-2 text-sm text-textMuted outline-none focus:border-brand/50"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500">Password</label>
+            <label className="block text-xs text-textFaint">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={mode === "register" ? "min 8 characters" : "••••••••"}
-              className="mt-1 w-full rounded-md border border-edge bg-panel px-3 py-2 text-sm text-gray-200 outline-none focus:border-brand/50"
+              className="mt-1 w-full rounded-md border border-edge bg-panel px-3 py-2 text-sm text-textMuted outline-none focus:border-brand/50"
             />
           </div>
-          {error && <p className="text-sm text-red-300">{error}</p>}
+          {error && <p className="text-sm text-fail">{error}</p>}
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-md bg-brand py-2.5 font-semibold text-black transition hover:bg-emerald-300 disabled:opacity-50"
+            className="w-full rounded-md bg-brand py-2.5 font-semibold text-black transition hover:bg-brandBright disabled:opacity-50"
           >
             {busy ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-500">
+        <p className="mt-4 text-center text-sm text-textFaint">
           {mode === "login" ? (
             <>
               No account?{" "}
@@ -177,7 +177,7 @@ export default function LoginPage() {
           )}
         </p>
 
-        <p className="mt-6 text-xs text-gray-600">
+        <p className="mt-6 text-xs text-textFaint">
           Prefer the CLI? Run{" "}
           <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[0.85em] text-brand">
             hookreplay login

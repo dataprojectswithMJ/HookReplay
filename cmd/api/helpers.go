@@ -136,8 +136,8 @@ func targetKind(target string) string {
 	return "url"
 }
 
-// isTunnelOrLocal reports whether a free-tier workspace may fire at a target.
-// Free tier is restricted to workspace tunnels (and localhost for dev) §5.8.
+// isTunnelOrLocal reports whether a target is a workspace tunnel or localhost.
+// Tunnels route to the user's own machine, so they're always safe to fire at.
 func isTunnelOrLocal(target string) bool {
 	if strings.Contains(target, "/t/") {
 		return true
@@ -148,6 +148,24 @@ func isTunnelOrLocal(target string) bool {
 	}
 	h := u.Hostname()
 	return h == "localhost" || h == "127.0.0.1" || h == "::1"
+}
+
+// targetAllowed reports whether the workspace may fire at the given target:
+// tunnels and localhost are always allowed; a public URL must be a verified
+// domain in this workspace.
+func (s *server) targetAllowed(ctx context.Context, pr *store.Principal, target string) bool {
+	if isTunnelOrLocal(target) {
+		return true
+	}
+	u, err := url.Parse(target)
+	if err != nil {
+		return false
+	}
+	ok, err := s.store.IsVerifiedDomain(ctx, pr.WorkspaceID, u.Hostname())
+	if err != nil {
+		return false
+	}
+	return ok
 }
 
 func sha256hex(b []byte) string {
@@ -174,7 +192,10 @@ func toExecutionJSON(e *store.Execution) apiclient.Execution {
 		LatencyMS:         e.LatencyMS,
 		Attempt:           e.Attempt,
 		ParentExecutionID: e.ParentExecutionID,
+		ChainID:           e.ChainID,
+		ChainRunID:        e.ChainRunID,
 		ErrorCode:         e.ErrorCode,
+		Deliver:           e.Deliver,
 		CreatedAt:         e.CreatedAt,
 	}
 }

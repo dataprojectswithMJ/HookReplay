@@ -17,8 +17,27 @@ export type Execution = {
   attempt: number;
   parent_execution_id?: string;
   error_code?: string;
+  deliver?: DeliverInfo;
+  chain_id?: string;
+  chain_run_id?: string;
   created_at: string;
 };
+
+export type DeliverInfo = {
+  result: string;
+  reason: string;
+};
+
+// A simulated failure ("deliver: fail") is a deliberate, observable outcome —
+// treat it as a failed delivery even when the target replied 200.
+export function deliveryFailed(d?: DeliverInfo): boolean {
+  return !!d && d.result === "fail";
+}
+
+export function deliveryLabel(d?: DeliverInfo): string {
+  if (!d || !d.result) return "";
+  return d.result === "fail" ? `fail · ${d.reason || "unknown"}` : d.result;
+}
 
 export type Template = {
   provider: string;
@@ -48,9 +67,12 @@ export type Me = {
 
 const KEY = "hookreplay_api_key";
 const USER_TOKEN_KEY = "hookreplay_user_token";
-// Dev-only default: the API seeds this key (HOOKREPLAY_DEV_API_KEY) so the
-// slice works out of the box. Real deployments use browser login instead.
-const DEV_API_KEY = "hrk_dev_local_dev_only_key";
+const USER_TOKEN_EXPIRY_KEY = "hookreplay_user_token_expires_at";
+
+// Sessions last one hour. The server enforces the same lifetime; this mirrors
+// it so the dashboard can proactively sign the user out without waiting for a
+// 401 from the API.
+export const SESSION_TTL_MS = 60 * 60 * 1000;
 
 export function getApiKey(): string {
   if (typeof window === "undefined") return "";
@@ -68,18 +90,34 @@ export function getUserToken(): string {
 
 export function setUserToken(t: string) {
   window.localStorage.setItem(USER_TOKEN_KEY, t);
+  window.localStorage.setItem(USER_TOKEN_EXPIRY_KEY, String(Date.now() + SESSION_TTL_MS));
+}
+
+export function getUserTokenExpiry(): number {
+  if (typeof window === "undefined") return 0;
+  const v = window.localStorage.getItem(USER_TOKEN_EXPIRY_KEY);
+  const n = v ? Number(v) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+
+// hasValidSession reports whether a logged-in user session exists and has not
+// expired. The dashboard requires a real session — it no longer falls back to
+// the seeded dev API key.
+export function hasValidSession(): boolean {
+  return getUserToken() !== "" && Date.now() < getUserTokenExpiry();
 }
 
 export function clearApiKey() {
   window.localStorage.removeItem(KEY);
   window.localStorage.removeItem(USER_TOKEN_KEY);
+  window.localStorage.removeItem(USER_TOKEN_EXPIRY_KEY);
 }
 
-// The credential used for API calls: the logged-in user session, or (dev
-// fallback) the seeded API key. Sessions are identity; API keys are for
+// The credential used for API calls: the logged-in user session, or an
+// explicitly configured API key. Sessions are identity; API keys are for
 // operations.
 function authToken(): string {
-  return getUserToken() || getApiKey() || DEV_API_KEY;
+  return getUserToken() || getApiKey();
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -216,6 +254,7 @@ export type ChainStepResult = {
   retries?: number;
   delays?: string[];
   error?: string;
+  deliver?: DeliverInfo;
   skipped: boolean;
   failed: boolean;
   expect_errors?: string[];
@@ -227,23 +266,95 @@ export type ChainRunResult = {
   passed: boolean;
 };
 
-export function executeChain(yamlText: string, target: string, env: string) {
+export function executeChain(yamlText: string, target: string, env: string, chainId?: string) {
   return apiFetch<ChainRunResult>("/v1/chains/execute", {
     method: "POST",
-    body: JSON.stringify({ yaml_text: yamlText, target, environment: env }),
+    body: JSON.stringify({ yaml_text: yamlText, target, environment: env, chain_id: chainId }),
   });
 }
 
-export type SecretName = { env: string; name: string; updated_at: string };
+export type ChainRunStep = {
+  id?: string;
+  run_id?: string;
+  step_name: string;
+  step_type?: "webhook" | "api" | "custom" | string;
+  request_summary?: string;
+  response_status: number;
+  response_body: string;
+  duration_ms: number;
+  passed: boolean;
+  error?: string;
+  position: number;
+};
+
+export type ChainRun = {
+  id: string;
+  workspace_id?: string;
+  chain_id?: string;
+  name: string;
+  status: string;
+  target_url: string;
+  started_at: string;
+  duration_ms: number;
+  error?: string;
+  steps?: ChainRunStep[];
+};
+
+export function listChainRuns(chainId: string, limit = 20) {
+  return apiFetch<{ runs: ChainRun[] }>(`/v1/chains/${chainId}/runs?limit=${limit}`).then(
+    (r) => r.runs
+  );
+}
+
+export function listRuns(limit = 50) {
+  return apiFetch<{ runs: ChainRun[] }>(`/v1/runs?limit=${limit}`).then((r) => r.runs);
+}
+
+export function getChainRun(id: string) {
+  return apiFetch<ChainRun>(`/v1/runs/${id}`);
+}
+
+export const getRun = getChainRun;
+
+// Async execution: POST /v1/chains/execute with async:true returns 202 and a
+// run_id; poll getChainRun until status leaves "running".
+export function executeChainAsync(yamlText: string, target: string, env: string, chainId?: string) {
+  return apiFetch<{ run_id: string }>("/v1/chains/execute", {
+    method: "POST",
+    body: JSON.stringify({
+      yaml_text: yamlText,
+      target,
+      environment: env,
+      chain_id: chainId,
+      async: true,
+    }),
+  });
+}
+
+// Live per-attempt executions for a run, oldest-first. Executions are written
+// as attempts happen, so this gives live lineage while a run is in flight.
+export function getRunExecutions(id: string) {
+  return apiFetch<{ executions: Execution[] }>(`/v1/runs/${id}/executions`).then(
+    (r) => r.executions
+  );
+}
+
+export type SecretName = {
+  env: string;
+  name: string;
+  kind: string;
+  value?: string;
+  updated_at: string;
+};
 
 export function listSecrets() {
   return apiFetch<SecretName[]>("/v1/secrets");
 }
 
-export function setSecret(env: string, name: string, value: string) {
+export function setSecret(env: string, name: string, value: string, kind: "secret" | "variable" = "secret") {
   return apiFetch<{ status: string }>(`/v1/secrets/${env}/${name}`, {
     method: "PUT",
-    body: JSON.stringify({ value }),
+    body: JSON.stringify({ value, kind }),
   });
 }
 

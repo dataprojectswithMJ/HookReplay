@@ -64,14 +64,14 @@ export default function KeysPage() {
           </div>
           <button
             onClick={openModal}
-            className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-emerald-300"
+            className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-brandBright"
           >
             Create key
           </button>
         </div>
 
         {error && (
-          <p className="mt-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <p className="mt-4 rounded-md border border-fail/30 bg-fail/10 px-3 py-2 text-sm text-fail">
             {error}
           </p>
         )}
@@ -83,7 +83,7 @@ export default function KeysPage() {
         ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-edge">
           <table className="w-full text-left text-sm">
-            <thead className="bg-panel text-xs uppercase tracking-wide text-gray-500">
+            <thead className="bg-panel text-xs uppercase tracking-wide text-textFaint">
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Prefix</th>
@@ -95,12 +95,12 @@ export default function KeysPage() {
             <tbody className="divide-y divide-edge bg-base">
               {keys.map((k) => (
                 <tr key={k.id}>
-                  <td className="px-4 py-3 text-gray-200">{k.name || "—"}</td>
-                  <td className="px-4 py-3 font-mono text-gray-200">{k.prefix}…</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                  <td className="px-4 py-3 text-textMuted">{k.name || "—"}</td>
+                  <td className="px-4 py-3 font-mono text-textMuted">{k.prefix}…</td>
+                  <td className="px-4 py-3 font-mono text-xs text-textMuted">
                     {k.scopes.join(", ")}
                   </td>
-                  <td className="px-4 py-3 text-gray-400">
+                  <td className="px-4 py-3 text-textMuted">
                     {k.last_used_at
                       ? new Date(k.last_used_at).toLocaleString()
                       : "never"}
@@ -108,7 +108,7 @@ export default function KeysPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => onRevoke(k.id)}
-                      className="text-red-400 hover:underline"
+                      className="text-fail hover:underline"
                     >
                       Revoke
                     </button>
@@ -117,7 +117,7 @@ export default function KeysPage() {
               ))}
               {keys.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-600">
+                  <td colSpan={5} className="px-4 py-8 text-center text-textFaint">
                     No keys yet.
                   </td>
                 </tr>
@@ -140,18 +140,18 @@ export default function KeysPage() {
             {newKey ? (
               <>
                 <h2 className="text-lg font-semibold text-white">Copy your new key</h2>
-                <p className="mt-1 text-sm text-gray-400">
+                <p className="mt-1 text-sm text-textMuted">
                   This is the only time it&apos;s shown:
                 </p>
                 <div className="mt-3 flex items-start gap-2">
-                  <pre className="flex-1 break-all rounded bg-base p-3 font-mono text-sm text-gray-200">
+                  <pre className="flex-1 break-all rounded bg-base p-3 font-mono text-sm text-textMuted">
                     {newKey}
                   </pre>
                   <CopyButton text={newKey} />
                 </div>
                 <button
                   onClick={() => setModalOpen(false)}
-                  className="mt-4 w-full rounded-md bg-brand py-2 font-semibold text-black hover:bg-emerald-300"
+                  className="mt-4 w-full rounded-md bg-brand py-2 font-semibold text-black hover:bg-brandBright"
                 >
                   Done
                 </button>
@@ -159,35 +159,35 @@ export default function KeysPage() {
             ) : (
               <>
                 <h2 className="text-lg font-semibold text-white">Create API key</h2>
-                <p className="mt-1 text-sm text-gray-400">
+                <p className="mt-1 text-sm text-textMuted">
                   Give it a name so you can switch to it later with{" "}
                   <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-brand">
                     hookreplay api-keys use &lt;name&gt;
                   </code>
                   .
                 </p>
-                <label className="mt-4 block text-xs text-gray-500">Key name</label>
+                <label className="mt-4 block text-xs text-textFaint">Key name</label>
                 <input
                   autoFocus
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. staging"
-                  className="mt-1 w-full rounded-md border border-edge bg-base px-3 py-2 text-sm text-gray-200 outline-none focus:border-brand/50"
+                  className="mt-1 w-full rounded-md border border-edge bg-base px-3 py-2 text-sm text-textMuted outline-none focus:border-brand/50"
                 />
                 {modalError && (
-                  <p className="mt-2 text-sm text-red-300">{modalError}</p>
+                  <p className="mt-2 text-sm text-fail">{modalError}</p>
                 )}
                 <div className="mt-4 flex justify-end gap-2">
                   <button
                     onClick={() => setModalOpen(false)}
-                    className="rounded-md border border-edge px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                    className="rounded-md border border-edge px-4 py-2 text-sm text-textMuted hover:bg-white/5"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={onCreate}
                     disabled={busy || !name.trim()}
-                    className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-300 disabled:opacity-50"
+                    className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-black hover:bg-brandBright disabled:opacity-50"
                   >
                     {busy ? "Creating…" : "Create key"}
                   </button>

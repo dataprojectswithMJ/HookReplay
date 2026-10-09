@@ -28,8 +28,10 @@ After boot:
 | Templates | http://localhost:8080/v1/templates |
 
 The API seeds a dev workspace + user + API key from `HOOKREPLAY_DEV_API_KEY`
-(default `hrk_dev_local_dev_only_key`). Sign in on the dashboard with that key
-(or GitHub).
+(default `hrk_dev_local_dev_only_key`). Sign in on the dashboard with email
+(create an account / sign in), or with Google/GitHub. Sessions expire after
+1 hour by default (`HOOKREPLAY_SESSION_TTL`) and the dashboard sends you back
+to the sign-in page.
 
 ---
 
@@ -175,6 +177,34 @@ Options:
 
 Also run `podman compose down` before re-`up` to clear stale containers.
 
+### `removing mount point .../merged: directory not empty` (container recreate fails)
+
+A stale rootless-overlay mount (or a file handle still held open inside the old
+container) is left behind, so Podman can't delete the old container during
+`up --build -d` recreation. Fix:
+
+```bash
+# 1. Force-remove the stuck container (use the ID from the error)
+podman rm -f <container-id>
+
+# 2. If it still complains, unmount the leftover overlay mount via unshare
+podman unshare sh -c 'umount /home/<you>/.local/share/containers/storage/overlay/<id>/merged'
+
+# 3. Prune and bring the stack back up cleanly
+podman system prune -f
+podman compose down
+podman compose up --build -d
+```
+
+If `umount` reports the path isn't mounted, restart the user Podman service so
+stale mounts are torn down, then prune and re-up:
+
+```bash
+systemctl --user restart podman.socket podman.service
+podman system prune -f
+podman compose up --build -d
+```
+
 ### API exits at startup with a "master key" error
 
 `HOOKREPLAY_MASTER_KEY` must be **exactly 32 bytes** — 64 hex chars or 44
@@ -217,6 +247,7 @@ This drops the Postgres volume (all executions, secrets, keys) and reseeds.
 | `HOOKREPLAY_DATABASE_URL` | `postgres://hookreplay:hookreplay@localhost:5432/hookreplay?sslmode=disable` | Postgres DSN |
 | `HOOKREPLAY_MASTER_KEY` | — | 32-byte AES-256-GCM key (required) |
 | `HOOKREPLAY_DEV_API_KEY` | — | Seeds the dev workspace/key |
+| `HOOKREPLAY_SESSION_TTL` | `1h` | Dashboard session lifetime (Go duration, e.g. `1h`, `30m`) |
 | `HOOKREPLAY_PUBLIC_BASE_URL` | `http://localhost:8080` | Base URL for tunnel + OAuth callback |
 | `GITHUB_CLIENT_ID` | — | GitHub OAuth app client ID |
 | `GITHUB_CLIENT_SECRET` | — | GitHub OAuth app client secret |

@@ -10,7 +10,6 @@ const NAV: { section: string; items: { href: string; label: string; exact?: bool
     section: "Overview",
     items: [
       { href: "/", label: "Dashboard", exact: true },
-      { href: "/fire", label: "Fire" },
       { href: "/templates", label: "Templates" },
       { href: "/log", label: "Log" },
       { href: "/chains", label: "Chains" },
@@ -66,7 +65,7 @@ export default function Sidebar() {
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         {NAV.map((group) => (
           <div key={group.section} className="mb-6">
-            <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+            <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-textFaint">
               {group.section}
             </p>
             <ul className="space-y-0.5">
@@ -81,7 +80,7 @@ export default function Sidebar() {
                       className={`block rounded-md px-2.5 py-2 text-sm transition-colors ${
                         active
                           ? "bg-brand/10 text-brand"
-                          : "text-gray-400 hover:bg-white/5 hover:text-gray-200"
+                          : "text-textMuted hover:bg-white/5 hover:text-white"
                       }`}
                     >
                       {item.label}
@@ -100,18 +99,18 @@ export default function Sidebar() {
             <span className="rounded-full bg-brand/15 px-2 py-0.5 text-xs text-brand">
               {me.tier}
             </span>
-            <span className="truncate text-xs text-gray-500">
+            <span className="truncate text-xs text-textFaint">
               {me.email || me.workspace_id}
             </span>
           </div>
         ) : (
-          <Link href="/login" className="text-sm text-gray-400 hover:text-brand">
+          <Link href="/login" className="text-sm text-textMuted hover:text-brand">
             Sign in
           </Link>
         )}
         <button
           onClick={signOut}
-          className="mt-3 block text-xs text-gray-500 transition-colors hover:text-gray-300"
+          className="mt-3 block text-xs text-textFaint transition-colors hover:text-textMuted"
         >
           Sign out
         </button>

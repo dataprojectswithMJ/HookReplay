@@ -8,6 +8,7 @@ export default function SecretsPage() {
   const [secrets, setSecrets] = useState<SecretName[]>([]);
   const [name, setName] = useState("");
   const [env, setEnv] = useState("local");
+  const [kind, setKind] = useState<"secret" | "variable">("secret");
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -24,7 +25,7 @@ export default function SecretsPage() {
     if (!name || !value) return;
     setError("");
     try {
-      await setSecret(env, name, value);
+      await setSecret(env, name, value, kind);
       setName("");
       setValue("");
       load();
@@ -45,34 +46,34 @@ export default function SecretsPage() {
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-5xl px-6 py-12">
-        <p className="font-mono text-sm text-brand">hookreplay / secrets</p>
-        <h1 className="mt-2 text-3xl font-bold text-white">Secrets</h1>
-        <p className="mt-2 text-sm text-gray-400">
-          Write-only — names only are shown; values are never returned.
+        <p className="font-mono text-sm text-brand">hookreplay / variables</p>
+        <h1 className="mt-2 text-3xl font-bold text-white">Variables &amp; secrets</h1>
+        <p className="mt-2 text-sm text-textMuted">
+          Secrets are encrypted and masked (write-only). Variables are visible and editable.
         </p>
 
         {error && (
-          <p className="mt-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <p className="mt-4 rounded-md border border-fail/30 bg-fail/10 px-3 py-2 text-sm text-fail">
             {error}
           </p>
         )}
 
         <div className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-edge bg-panel p-5">
           <div>
-            <label className="block text-xs text-gray-500">Name</label>
+            <label className="block text-xs text-textFaint">Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="STRIPE_WEBHOOK_SECRET"
-              className="mt-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-gray-200 outline-none focus:border-brand/50"
+              className="mt-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-textMuted outline-none focus:border-brand/50"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500">Environment</label>
+            <label className="block text-xs text-textFaint">Environment</label>
             <select
               value={env}
               onChange={(e) => setEnv(e.target.value)}
-              className="mt-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-gray-200 outline-none focus:border-brand/50"
+              className="mt-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-textMuted outline-none focus:border-brand/50"
             >
               <option value="local">local</option>
               <option value="staging">staging</option>
@@ -80,20 +81,31 @@ export default function SecretsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500">Value</label>
+            <label className="block text-xs text-textFaint">Kind</label>
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as "secret" | "variable")}
+              className="mt-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-textMuted outline-none focus:border-brand/50"
+            >
+              <option value="secret">secret</option>
+              <option value="variable">variable</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-textFaint">Value</label>
             <input
-              type="password"
+              type={kind === "secret" ? "password" : "text"}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="whsec_…"
-              className="mt-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-gray-200 outline-none focus:border-brand/50"
+              placeholder={kind === "secret" ? "whsec_…" : "https://…"}
+              className="mt-1 rounded-md border border-edge bg-base px-3 py-2 font-mono text-sm text-textMuted outline-none focus:border-brand/50"
             />
           </div>
           <button
             onClick={onAdd}
-            className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-emerald-300"
+            className="rounded-md bg-brand px-4 py-2 font-semibold text-black hover:bg-brandBright"
           >
-            Add secret
+            Add
           </button>
         </div>
 
@@ -104,9 +116,11 @@ export default function SecretsPage() {
         ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-edge">
           <table className="w-full text-left text-sm">
-            <thead className="bg-panel text-xs uppercase tracking-wide text-gray-500">
+            <thead className="bg-panel text-xs uppercase tracking-wide text-textFaint">
               <tr>
                 <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Kind</th>
+                <th className="px-4 py-3">Value</th>
                 <th className="px-4 py-3">Environment</th>
                 <th className="px-4 py-3">Updated</th>
                 <th className="px-4 py-3"></th>
@@ -115,15 +129,19 @@ export default function SecretsPage() {
             <tbody className="divide-y divide-edge bg-base">
               {secrets.map((s) => (
                 <tr key={`${s.env}/${s.name}`}>
-                  <td className="px-4 py-3 font-mono text-gray-200">{s.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-400">{s.env}</td>
-                  <td className="px-4 py-3 text-gray-400">
+                  <td className="px-4 py-3 font-mono text-textMuted">{s.name}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-textMuted">{s.kind}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-textMuted">
+                    {s.kind === "variable" ? s.value : "••••••••"}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-textMuted">{s.env}</td>
+                  <td className="px-4 py-3 text-textMuted">
                     {new Date(s.updated_at).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => onDelete(s.env, s.name)}
-                      className="text-red-400 hover:underline"
+                      className="text-fail hover:underline"
                     >
                       Delete
                     </button>
@@ -132,8 +150,8 @@ export default function SecretsPage() {
               ))}
               {secrets.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-600">
-                    No secrets yet.
+                  <td colSpan={6} className="px-4 py-8 text-center text-textFaint">
+                    No variables yet.
                   </td>
                 </tr>
               )}

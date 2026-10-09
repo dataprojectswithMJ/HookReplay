@@ -2,7 +2,10 @@ package chains
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/hookreplay/hookreplay/pkg/apiclient"
 )
@@ -37,8 +40,11 @@ func TestRehearseRetries(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if retries != 1 || len(delays) != 1 || delays[0] != "1ms" || final.ResponseStatus != 200 {
+		if retries != 1 || len(delays) != 1 || final.ResponseStatus != 200 {
 			t.Fatalf("got retries=%d delays=%v status=%d", retries, delays, final.ResponseStatus)
+		}
+		if d, perr := time.ParseDuration(delays[0]); perr != nil || d <= 0 || d > 100*time.Millisecond {
+			t.Fatalf("observed delay %q out of 1ms window: %v", delays[0], perr)
 		}
 	})
 
@@ -76,6 +82,37 @@ func TestRehearseRetries(t *testing.T) {
 			t.Fatalf("expected 0 retries on cancel, got %d", retries)
 		}
 	})
+
+	t.Run("recorded failure with execution keeps rehearsing", func(t *testing.T) {
+		// A dispatch that returns an execution alongside its error (a
+		// recorded pre-send/transport failure) counts as a failed attempt.
+		calls := 0
+		dispatch := func() (*apiclient.Execution, error) {
+			calls++
+			if calls == 1 {
+				return &apiclient.Execution{ResponseStatus: 0, ErrorCode: "connection_refused"}, errors.New("connection refused")
+			}
+			return &apiclient.Execution{ResponseStatus: 200}, nil
+		}
+		retries, delays, final, err := rehearseRetries(context.Background(),
+			dispatch, []string{"0s", "1ms"}, 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retries != 1 || len(delays) != 1 || final.ResponseStatus != 200 {
+			t.Fatalf("got retries=%d delays=%v status=%d", retries, delays, final.ResponseStatus)
+		}
+	})
+
+	t.Run("error without execution aborts", func(t *testing.T) {
+		retries, _, final, err := rehearseRetries(context.Background(),
+			func() (*apiclient.Execution, error) {
+				return nil, errors.New("sign failed")
+			}, []string{"0s", "1ms"}, 3)
+		if err == nil || final != nil || retries != 0 {
+			t.Fatalf("expected abort, got retries=%d final=%v err=%v", retries, final, err)
+		}
+	})
 }
 
 func TestEvalExpectRetriesDelays(t *testing.T) {
@@ -96,6 +133,19 @@ func TestEvalExpectRetriesDelays(t *testing.T) {
 	// Duration equivalence: "30s" == "30000ms".
 	if errs := evalExpect(&Expect{Delays: []string{"5s", "30000ms"}}, sr); len(errs) != 0 {
 		t.Fatalf("expected duration-equivalent delays to pass, got %v", errs)
+	}
+
+	// ±20% tolerance: "5.5s" is within range of "5s", "20s" is not of "30s".
+	sr2 := StepResult{Status: 200, Retries: 2, Delays: []string{"5.5s", "20s"}}
+	if errs := evalExpect(&Expect{Delays: []string{"5s", "30s"}}, sr2); len(errs) != 1 {
+		t.Fatalf("expected exactly one delay failure, got %v", errs)
+	} else if !strings.Contains(errs[0], "delay 2 of 2") {
+		t.Fatalf("expected mismatch to name delay 2, got %q", errs[0])
+	}
+
+	// Length mismatch reports expected vs observed counts.
+	if errs := evalExpect(&Expect{Delays: []string{"5s"}}, sr); len(errs) != 1 {
+		t.Fatalf("expected length mismatch to fail, got %v", errs)
 	}
 }
 
@@ -141,8 +191,11 @@ func TestExecuteWebhookRetryRehearsal(t *testing.T) {
 		t.Fatalf("expected pass, got steps: %+v", res.Steps)
 	}
 	s := res.Steps[0]
-	if s.Retries != 1 || len(s.Delays) != 1 || s.Delays[0] != "5s" {
+	if s.Retries != 1 || len(s.Delays) != 1 {
 		t.Fatalf("unexpected retry result: %+v", s)
+	}
+	if d, perr := time.ParseDuration(s.Delays[0]); perr != nil || d < 4*time.Second || d > 6*time.Second {
+		t.Fatalf("observed delay %q out of 5s±20%% window: %v", s.Delays[0], perr)
 	}
 }
 

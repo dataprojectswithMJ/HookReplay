@@ -94,6 +94,13 @@ func (s *server) handleDispatch(w http.ResponseWriter, r *http.Request) {
 
 	exec, err := s.dispatchOnce(r.Context(), pr, req)
 	if err != nil {
+		if exec != nil {
+			// Dispatch failed (sign_error, invalid_target, transport error)
+			// but the execution — with its error_code — was persisted.
+			// Single-fire keeps 200 + the execution body.
+			writeJSON(w, http.StatusOK, exec)
+			return
+		}
 		writeAPIError(w, err, reqID)
 		return
 	}
@@ -107,9 +114,9 @@ func (s *server) dispatchOnce(ctx context.Context, pr *store.Principal, req apic
 }
 
 func (s *server) dispatchInternal(ctx context.Context, pr *store.Principal, req apiclient.DispatchRequest, parentID string, attempt int) (*apiclient.Execution, error) {
-	if pr.Tier == "free" && !isTunnelOrLocal(req.Target) {
-		return nil, errAPI(http.StatusForbidden, "tier_required",
-			"Free tier can only fire at tunnel targets. Upgrade to Pro to fire at public URLs.")
+	if !s.targetAllowed(ctx, pr, req.Target) {
+		return nil, errAPI(http.StatusForbidden, "domain_not_verified",
+			"fire at a public URL requires a verified domain (add and verify it in Domains)")
 	}
 	if !s.limiter.Allow(pr.WorkspaceID) {
 		return nil, errAPI(http.StatusTooManyRequests, "rate_limited", "too many requests")
@@ -152,15 +159,24 @@ func (s *server) dispatchInternal(ctx context.Context, pr *store.Principal, req 
 		dreq.Deliver = dispatch.Deliver{Result: req.Deliver.Result, Reason: req.Deliver.Reason}
 	}
 
-	res, _ := s.dispatcher.Dispatch(ctx, dreq)
+	res, derr := s.dispatcher.Dispatch(ctx, dreq)
 	if res.RequestBody == nil {
 		res.RequestBody = []byte{}
 	}
 
 	exec := &store.Execution{
-		ID:                id.New("evt_"),
-		WorkspaceID:       pr.WorkspaceID,
-		StepName:          event,
+		ID:          id.New("evt_"),
+		WorkspaceID: pr.WorkspaceID,
+		// Chain context arrives only from the in-process chain runner
+		// (serverDispatcher); plain API fires leave these unset.
+		ChainID:    req.ChainID,
+		ChainRunID: req.ChainRunID,
+		StepName: func() string {
+			if req.StepName != "" {
+				return req.StepName
+			}
+			return event
+		}(),
 		TargetKind:        dreq.Target.Kind,
 		Target:            req.Target,
 		Provider:          provider,
@@ -194,5 +210,12 @@ func (s *server) dispatchInternal(ctx context.Context, pr *store.Principal, req 
 	}
 
 	e := toExecutionJSON(exec)
+	if derr != nil {
+		// Pre-send (sign_error, invalid_target, circuit_open) and transport
+		// failures reach here with the execution persisted and its error_code
+		// set. Surface the error so chain steps can show it; the HTTP handler
+		// still responds 200 with the execution for single fires.
+		return &e, derr
+	}
 	return &e, nil
 }

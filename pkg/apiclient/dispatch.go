@@ -24,6 +24,13 @@ type DispatchRequest struct {
 	Deliver         *DeliverConfig `json:"deliver,omitempty"`
 	IdempotencyKey  string         `json:"idempotency_key,omitempty"`
 	SuppressRetries bool           `json:"suppress_retries,omitempty"`
+
+	// Server-internal chain linkage. Never serialized: only the in-process
+	// chain runner (via serverDispatcher) can set these; HTTP clients cannot
+	// inject them.
+	ChainID    string `json:"-"`
+	ChainRunID string `json:"-"`
+	StepName   string `json:"-"`
 }
 
 // Execution is a persisted dispatch result.
@@ -45,7 +52,10 @@ type Execution struct {
 	LatencyMS         int64             `json:"latency_ms"`
 	Attempt           int               `json:"attempt"`
 	ParentExecutionID string            `json:"parent_execution_id,omitempty"`
+	ChainID           string            `json:"chain_id,omitempty"`
+	ChainRunID        string            `json:"chain_run_id,omitempty"`
 	ErrorCode         string            `json:"error_code,omitempty"`
+	Deliver           map[string]string `json:"deliver,omitempty"`
 	CreatedAt         time.Time         `json:"created_at"`
 }
 
@@ -78,10 +88,13 @@ func (c *Client) ListExecutions(ctx context.Context, limit int) ([]Execution, er
 
 // --- Secrets ---
 
-// SecretName is the only shape a secret is ever returned in (never a value).
+// SecretName is the shape a secret/variable is returned in. Secrets never
+// expose their value; variables do.
 type SecretName struct {
 	Env       string    `json:"env"`
 	Name      string    `json:"name"`
+	Kind      string    `json:"kind"`
+	Value     string    `json:"value,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
